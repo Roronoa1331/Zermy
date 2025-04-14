@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Trash2 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
@@ -64,7 +64,7 @@ const products = [
   }
 ]
 
-export default function CartPage() {
+function CartContent() {
   const searchParams = useSearchParams()
   const [cartItems, setCartItems] = useState<Array<typeof products[0] & { quantity: number }>>([])
 
@@ -232,5 +232,13 @@ export default function CartPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={<div className="container py-16 text-center">Loading...</div>}>
+      <CartContent />
+    </Suspense>
   )
 } 
