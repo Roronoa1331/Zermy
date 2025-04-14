@@ -4,8 +4,8 @@ import Image from "next/image"
 
 export function Hero() {
   return (
-    <section className="bg-primary">
-      <div className="container px-4 py-16 md:py-24">
+    <section className="bg-primary h-screen flex items-center">
+      <div className="container px-4">
         <div className="grid gap-8 md:grid-cols-2 items-center">
           <div className="space-y-8">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Həm təbiət, <br></br> Həm cüzdan üçün sərfəli ticarət!🌿</h1>
@@ -25,8 +25,8 @@ export function Hero() {
             </div>
           </div>
           <div className="relative">
-          <div className="aspect-square relative overflow-hidden" >
-            <Image
+            <div className="aspect-square relative overflow-hidden">
+              <Image
                 src="https://treedefi.com/static/media/mascotte.2927842f1f70a1efea48a0595268bff9.svg"
                 alt="Plant in a pot"
                 width={600}

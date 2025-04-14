@@ -1,8 +1,13 @@
+"use client"
+
 import Link from "next/link"
-import { ShoppingCart, User, Menu } from "lucide-react"
+import { ShoppingCart, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { usePathname } from "next/navigation"
 
 export function Navigation() {
+  const pathname = usePathname()
+
   return (
     <nav className="border-b">
       <div className="container flex items-center justify-between h-16">
@@ -10,27 +15,33 @@ export function Navigation() {
           ZERMY
         </Link>
 
-        <div className="hidden md:flex items-center space-x-8">
-          <Link href="/" className="font-medium">
+        <div className="flex items-center space-x-8">
+          <Link 
+            href="/" 
+            className={`${pathname === "/" ? "font-semibold" : "text-muted-foreground"}`}
+          >
             Əsas
           </Link>
-          <Link href="/products" className="text-muted-foreground">
+          <Link 
+            href="/products" 
+            className={`${pathname === "/products" ? "font-semibold" : "text-muted-foreground"}`}
+          >
             Məhsullar
           </Link>
-          <Link href="/contacts" className="text-muted-foreground">
+          <Link 
+            href="/contacts" 
+            className={`${pathname === "/contacts" ? "font-semibold" : "text-muted-foreground"}`}
+          >
             Əlaqə
           </Link>
         </div>
 
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon">
+          <Link href="/cart" className="relative p-2 hover:bg-accent rounded-full">
             <ShoppingCart className="h-5 w-5" />
-          </Button>
+          </Link>
           <Button variant="ghost" size="icon">
             <User className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Menu className="h-5 w-5" />
           </Button>
         </div>
       </div>
