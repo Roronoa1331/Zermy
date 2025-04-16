@@ -150,16 +150,13 @@ function ARViewerContent() {
       // Create scene
       const scene = new THREE.Scene()
       sceneRef.current = scene
-      console.log('Scene created')
       
       // Create camera
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-      camera.position.z = 5 // Position the camera to see the model
+      camera.position.z = 5
       cameraRef.current = camera
-      console.log('Camera created')
       
       // Create renderer
-      console.log('Creating renderer with canvas:', canvasRef.current)
       const renderer = new THREE.WebGLRenderer({ 
         canvas: canvasRef.current as HTMLCanvasElement,
         antialias: true,
@@ -169,7 +166,6 @@ function ARViewerContent() {
       renderer.setPixelRatio(window.devicePixelRatio)
       renderer.xr.enabled = true
       rendererRef.current = renderer
-      console.log('Renderer created and configured')
       
       // Add orbit controls
       const controls = new OrbitControls(camera, renderer.domElement)
@@ -181,7 +177,6 @@ function ARViewerContent() {
       controls.maxPolarAngle = Math.PI / 2
       controls.autoRotate = autoRotate
       controlsRef.current = controls
-      console.log('Orbit controls added')
       
       // Add lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
@@ -190,7 +185,6 @@ function ARViewerContent() {
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
       directionalLight.position.set(0, 1, 1)
       scene.add(directionalLight)
-      console.log('Lights added to scene')
       
       // Add a simple cube as a placeholder while the model loads
       const geometry = new THREE.BoxGeometry(1, 1, 1)
@@ -198,7 +192,6 @@ function ARViewerContent() {
       const cube = new THREE.Mesh(geometry, material)
       cube.position.set(0, 0, -2)
       scene.add(cube)
-      console.log('Added placeholder cube to scene')
       
       // Start animation loop immediately to show something to the user
       const animate = () => {
@@ -207,7 +200,6 @@ function ARViewerContent() {
         }
         
         if (modelRef.current && sessionRef.current) {
-          // In AR mode, make sure the model is visible
           modelRef.current.visible = true
         }
         
@@ -215,7 +207,6 @@ function ARViewerContent() {
         requestAnimationFrame(animate)
       }
       
-      console.log('Starting animation loop')
       animate()
       
       // Handle window resize
@@ -254,7 +245,6 @@ function ARViewerContent() {
       const loadingManager = new THREE.LoadingManager();
       loadingManager.onProgress = (url, loaded, total) => {
         const percent = (loaded / total * 100).toFixed(2);
-        console.log(`Loading progress: ${percent}% (${loaded}/${total} bytes)`);
         setLoadingProgress(Number(percent));
       };
       
@@ -291,7 +281,6 @@ function ARViewerContent() {
         if (sceneRef.current) {
           sceneRef.current.add(cachedModel);
           modelRef.current = cachedModel;
-          console.log('Cached model added to scene:', cachedModel);
         }
         
         setModelLoading(false);
@@ -332,21 +321,16 @@ function ARViewerContent() {
             if (sceneRef.current) {
               sceneRef.current.add(model);
               modelRef.current = model;
-              console.log('Model added to scene and cached:', model);
             }
             
             setModelLoading(false);
           },
           (progress) => {
             const percent = (progress.loaded / progress.total * 100).toFixed(2);
-            console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`);
             setLoadingProgress(Number(percent));
           },
           (error: unknown) => {
             console.error('Error loading model:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Detailed error:', errorMessage);
-            setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage);
             setModelLoading(false);
             
             // Try to load a fallback model if available
@@ -422,9 +406,7 @@ function ARViewerContent() {
   // Start AR session
   const startAR = async () => {
     try {
-      console.log('Starting AR session...');
       if (!rendererRef.current) {
-        console.error('Renderer not initialized');
         return;
       }
       
@@ -434,7 +416,6 @@ function ARViewerContent() {
         domOverlay: { root: document.body }
       });
       
-      console.log('AR session created:', session);
       sessionRef.current = session;
       
       // Set up AR session
@@ -472,48 +453,34 @@ function ARViewerContent() {
       
       // Start the AR session
       await rendererRef.current.xr.setSession(session);
-      console.log('AR session started successfully');
     } catch (error) {
       console.error('Error starting AR session:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError('AR sessiyası başladıla bilmədi: ' + errorMessage);
     }
   };
 
   useEffect(() => {
     // Find the product based on the ID from the URL
     const productId = Number(params.id)
-    console.log('Product ID from URL:', productId)
     const foundProduct = products.find(p => p.id === productId)
     
     if (!foundProduct) {
-      console.error('Product not found for ID:', productId)
       setError("Məhsul tapılmadı")
       setIsLoading(false)
       return
     }
     
-    console.log('Found product:', foundProduct)
     setProduct(foundProduct)
-    
-    // Preload models in the background
-    preloadModels();
     
     // Check if WebXR is supported
     const checkARSupport = async () => {
       try {
-        console.log('Checking AR support...')
         if ('xr' in navigator) {
-          console.log('WebXR is available in navigator')
           const isSupported = await (navigator as any).xr.isSessionSupported('immersive-ar')
-          console.log('AR support result:', isSupported)
           setArSupported(isSupported)
         } else {
-          console.log('WebXR is not available in navigator')
           setArSupported(false)
         }
       } catch (error) {
-        console.error('Error checking AR support:', error)
         setArSupported(false)
       } finally {
         setIsLoading(false)
@@ -524,20 +491,12 @@ function ARViewerContent() {
     
     // Initialize Three.js immediately
     if (canvasRef.current) {
-      console.log('Initializing Three.js immediately...')
       initThreeJS()
-    }
-    
-    // Load the model after a short delay to ensure UI is responsive
-    const modelLoadingTimer = setTimeout(() => {
+      
+      // Load the model immediately after initialization
       if (foundProduct) {
-        console.log('Starting model loading...')
         loadModel()
       }
-    }, 100)
-    
-    return () => {
-      clearTimeout(modelLoadingTimer)
     }
   }, [params.id])
 
