@@ -74,8 +74,8 @@ function ARViewerContent() {
   // Check if AR is supported
   useEffect(() => {
     const checkARSupport = () => {
-      // Check if the device is mobile
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      // Check if the device is mobile - improved detection
+      const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       // Check if WebXR is supported
       const hasWebXR = 'xr' in navigator;
@@ -85,12 +85,19 @@ function ARViewerContent() {
       
       console.log('AR support check:', { isMobile, hasWebXR, hasModelViewer });
       
-      // Set AR as supported if on mobile and model-viewer is available
-      setArSupported(isMobile && hasModelViewer);
+      // Set AR as supported if on mobile
+      // We'll assume AR is supported on mobile devices even if model-viewer isn't detected yet
+      // This is because the model-viewer script might not be loaded when this check runs
+      setArSupported(isMobile);
       setIsLoading(false);
     };
 
-    checkARSupport();
+    // Run the check after a short delay to ensure the model-viewer script has loaded
+    const timer = setTimeout(() => {
+      checkARSupport();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Find the product based on the ID from the URL
@@ -213,11 +220,9 @@ function ARViewerContent() {
           onLoad={handleModelLoad}
           onError={handleModelError}
         >
-          {arSupported && (
-            <button slot="ar-button" className="arbutton">
-              AR-da bax
-            </button>
-          )}
+          <button slot="ar-button" className="arbutton">
+            AR-da bax
+          </button>
         </model-viewer>
       </div>
       
@@ -232,11 +237,15 @@ function ARViewerContent() {
               <li>Avtomatik fırlatma üçün: Yuxarıdakı düyməni istifadə edin</li>
             </ul>
           </div>
-          {!arSupported && (
-            <div className="text-sm text-red-600 font-medium mb-2">
-              <p>Sizin cihazınız AR funksiyasını dəstəkləmir. Zəhmət olmasa mobil cihaz istifadə edin.</p>
-            </div>
-          )}
+          <div className="text-sm text-blue-600 font-medium mb-2">
+            <p>AR rejimində məhsulu yerləşdirmək üçün:</p>
+            <ol className="list-decimal list-inside">
+              <li>"AR-da bax" düyməsinə toxunun</li>
+              <li>Kameranı boş bir səthə yönləndirin</li>
+              <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+              <li>Məhsulu hərəkət etdirmək üçün onu sürüşdürün</li>
+            </ol>
+          </div>
         </div>
       </div>
     </>
