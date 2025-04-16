@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ShoppingCart } from "lucide-react"
+import { ShoppingCart, Eye } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
@@ -176,11 +176,17 @@ function ProductsContent() {
                 <p className="text-gray-600 mt-2 line-clamp-2">{product.description}</p>
               </div>
             </Link>
-            <div className="p-4 pt-0">
-              <Button asChild className="w-full">
+            <div className="p-4 pt-0 flex gap-2">
+              <Button asChild className="flex-1">
                 <Link href={`/cart?add=${product.id}`}>
                   <ShoppingCart className="mr-2 h-4 w-4" />
                   Səbətə əlavə et
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="flex-1">
+                <Link href={`/ar/${product.id}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  AR-da bax
                 </Link>
               </Button>
             </div>
