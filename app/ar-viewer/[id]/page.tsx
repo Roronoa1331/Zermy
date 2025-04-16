@@ -51,7 +51,7 @@ const preloadModels = () => {
   });
   
   // Preload fallback model
-  const fallbackModelUrl = '/models/products/bag/base_basic_shaded.glb';
+  const fallbackModelUrl = "https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb";
   if (!modelCache[fallbackModelUrl]) {
     console.log(`Preloading fallback model: ${fallbackModelUrl}`);
     loader.load(
@@ -93,8 +93,8 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    // Using the new .glb model file
-    modelUrl: "/models/products/bag/base_basic_shaded.glb",
+    // Using the CDN model file
+    modelUrl: "https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb",
   },
   {
     id: 2,
@@ -310,15 +310,15 @@ function ARViewerContent() {
               setModelLoading(false)
               
               // Try to load a fallback model if available
-              if (product.modelUrl !== '/models/products/bag/base_basic_shaded.glb') {
+              if (product.modelUrl !== 'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb') {
                 console.log('Attempting to load fallback model')
                 setModelLoading(true)
                 setLoadingProgress(0)
                 
                 // Check if fallback model is in cache
-                if (modelCache['/models/products/bag/base_basic_shaded.glb']) {
+                if (modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb']) {
                   console.log('Fallback model found in cache, using cached version')
-                  const cachedModel = modelCache['/models/products/bag/base_basic_shaded.glb'].clone()
+                  const cachedModel = modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'].clone()
                   cachedModel.scale.set(0.5, 0.5, 0.5)
                   cachedModel.position.set(0, 0, -1)
                   
@@ -330,7 +330,7 @@ function ARViewerContent() {
                   setModelLoading(false)
                 } else {
                   loader.load(
-                    '/models/products/bag/base_basic_shaded.glb',
+                    'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb',
                     (gltf: { scene: THREE.Object3D }) => {
                       console.log('Fallback model loaded successfully')
                       const model = gltf.scene
@@ -341,7 +341,7 @@ function ARViewerContent() {
                       scene.remove(cube)
                       
                       // Add to cache
-                      modelCache['/models/products/bag/base_basic_shaded.glb'] = model.clone()
+                      modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'] = model.clone()
                       
                       scene.add(model)
                       modelRef.current = model
