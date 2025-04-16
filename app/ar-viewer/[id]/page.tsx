@@ -6,9 +6,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Script from "next/script"
+// Import Three.js directly from CDN
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 // Define WebXR types
 declare global {
@@ -79,6 +80,7 @@ function ARViewerContent() {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [threeJsInitialized, setThreeJsInitialized] = useState(false)
   const [autoRotate, setAutoRotate] = useState(false)
+  const [threeJsLoaded, setThreeJsLoaded] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -132,9 +134,17 @@ function ARViewerContent() {
     console.log('AR support state:', arSupported)
     console.log('Canvas ref:', canvasRef.current)
     console.log('Product:', product)
+    console.log('Three.js loaded:', threeJsLoaded)
     
-    if (!arSupported || !canvasRef.current || !product) {
+    if (!arSupported || !canvasRef.current || !product || !threeJsLoaded) {
       console.log('Skipping Three.js initialization due to missing requirements')
+      return
+    }
+
+    // Check if Three.js is loaded
+    if (typeof THREE === 'undefined') {
+      console.error('Three.js is not loaded yet')
+      setError('Three.js yüklənmədi. Zəhmət olmasa səhifəni yeniləyin.')
       return
     }
 
@@ -401,7 +411,7 @@ function ARViewerContent() {
     }
     
     initThreeJS()
-  }, [arSupported, product])
+  }, [arSupported, product, threeJsLoaded])
 
   if (isLoading) {
     return (
@@ -443,7 +453,18 @@ function ARViewerContent() {
 
   return (
     <>
-      <Script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js" strategy="beforeInteractive" />
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" 
+        strategy="beforeInteractive" 
+        onLoad={() => {
+          console.log('Three.js loaded successfully')
+          setThreeJsLoaded(true)
+        }}
+        onError={(e) => {
+          console.error('Error loading Three.js:', e)
+          setError('Three.js yüklənmədi. Zəhmət olmasa səhifəni yeniləyin.')
+        }}
+      />
       
       <div className="fixed top-4 left-4 z-10">
         <Button asChild variant="outline" className="bg-white/80 backdrop-blur-sm">
@@ -502,6 +523,18 @@ function ARViewerContent() {
             <div 
               className="h-full bg-blue-500 transition-all duration-300" 
               style={{ width: '70%' }}
+            ></div>
+          </div>
+        </div>
+      )}
+      
+      {!threeJsLoaded && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
+          <p className="mb-2">Three.js yüklənir...</p>
+          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-300" 
+              style={{ width: '50%' }}
             ></div>
           </div>
         </div>
