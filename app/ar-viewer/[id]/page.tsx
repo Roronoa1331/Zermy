@@ -192,6 +192,14 @@ function ARViewerContent() {
       scene.add(directionalLight)
       console.log('Lights added to scene')
       
+      // Add a simple cube as a placeholder while the model loads
+      const geometry = new THREE.BoxGeometry(1, 1, 1)
+      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+      const cube = new THREE.Mesh(geometry, material)
+      cube.position.set(0, 0, -2)
+      scene.add(cube)
+      console.log('Added placeholder cube to scene')
+      
       // Start animation loop immediately to show something to the user
       const animate = () => {
         if (controlsRef.current && !sessionRef.current) {
@@ -209,158 +217,6 @@ function ARViewerContent() {
       
       console.log('Starting animation loop')
       animate()
-      
-      // Add a simple cube as a placeholder while the model loads
-      const geometry = new THREE.BoxGeometry(1, 1, 1)
-      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
-      const cube = new THREE.Mesh(geometry, material)
-      cube.position.set(0, 0, -2)
-      scene.add(cube)
-      console.log('Added placeholder cube to scene')
-      
-      // Create a loading manager to track progress
-      const loadingManager = new THREE.LoadingManager();
-      loadingManager.onProgress = (url, loaded, total) => {
-        const percent = (loaded / total * 100).toFixed(2);
-        console.log(`Loading progress: ${percent}% (${loaded}/${total} bytes)`);
-        setLoadingProgress(Number(percent));
-      };
-      
-      // Load 3D model in the background
-      const loader = new GLTFLoader(loadingManager)
-      console.log('Attempting to load model from:', product.modelUrl)
-      setModelLoading(true)
-      setLoadingProgress(0)
-      
-      // Check if model is already in cache
-      if (modelCache[product.modelUrl]) {
-        console.log('Model found in cache, using cached version')
-        const cachedModel = modelCache[product.modelUrl].clone()
-        
-        // Center the model
-        const box = new THREE.Box3().setFromObject(cachedModel)
-        const center = box.getCenter(new THREE.Vector3())
-        cachedModel.position.sub(center)
-        
-        // Scale the model appropriately
-        const size = box.getSize(new THREE.Vector3())
-        const maxDim = Math.max(size.x, size.y, size.z)
-        const scale = 1 / maxDim
-        cachedModel.scale.multiplyScalar(scale)
-        
-        // Position the model in front of the camera
-        cachedModel.position.set(0, 0, -1)
-        
-        // Make the model visible
-        cachedModel.visible = true
-        
-        // Remove the placeholder cube
-        scene.remove(cube)
-        
-        scene.add(cachedModel)
-        modelRef.current = cachedModel
-        console.log('Cached model added to scene:', cachedModel)
-        setModelLoading(false)
-      } else {
-        // Load the model immediately without setTimeout
-        loader.load(
-          product.modelUrl,
-          (gltf: { scene: THREE.Object3D }) => {
-            console.log('Model loaded successfully:', product.modelUrl)
-            const model = gltf.scene
-            
-            // Center the model
-            const box = new THREE.Box3().setFromObject(model)
-            const center = box.getCenter(new THREE.Vector3())
-            model.position.sub(center)
-            
-            // Scale the model appropriately
-            const size = box.getSize(new THREE.Vector3())
-            const maxDim = Math.max(size.x, size.y, size.z)
-            const scale = 1 / maxDim
-            model.scale.multiplyScalar(scale)
-            
-            // Position the model in front of the camera
-            model.position.set(0, 0, -1)
-            
-            // Make the model visible
-            model.visible = true
-            
-            // Remove the placeholder cube
-            scene.remove(cube)
-            
-            // Add to cache
-            modelCache[product.modelUrl] = model.clone()
-            
-            scene.add(model)
-            modelRef.current = model
-            console.log('Model added to scene and cached:', model)
-            setModelLoading(false)
-          },
-          (progress) => {
-            const percent = (progress.loaded / progress.total * 100).toFixed(2)
-            console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`)
-            setLoadingProgress(Number(percent))
-          },
-          (error: unknown) => {
-            console.error('Error loading model:', error)
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-            console.error('Detailed error:', errorMessage)
-            setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage)
-            setModelLoading(false)
-            
-            // Try to load a fallback model if available
-            if (product.modelUrl !== 'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb') {
-              console.log('Attempting to load fallback model')
-              setModelLoading(true)
-              setLoadingProgress(0)
-              
-              // Check if fallback model is in cache
-              if (modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb']) {
-                console.log('Fallback model found in cache, using cached version')
-                const cachedModel = modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'].clone()
-                cachedModel.scale.set(0.5, 0.5, 0.5)
-                cachedModel.position.set(0, 0, -1)
-                
-                // Remove the placeholder cube
-                scene.remove(cube)
-                
-                scene.add(cachedModel)
-                modelRef.current = cachedModel
-                setModelLoading(false)
-              } else {
-                loader.load(
-                  'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb',
-                  (gltf: { scene: THREE.Object3D }) => {
-                    console.log('Fallback model loaded successfully')
-                    const model = gltf.scene
-                    model.scale.set(0.5, 0.5, 0.5)
-                    model.position.set(0, 0, -1)
-                    
-                    // Remove the placeholder cube
-                    scene.remove(cube)
-                    
-                    // Add to cache
-                    modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'] = model.clone()
-                    
-                    scene.add(model)
-                    modelRef.current = model
-                    setModelLoading(false)
-                  },
-                  (progress) => {
-                    const percent = (progress.loaded / progress.total * 100).toFixed(2)
-                    setLoadingProgress(Number(percent))
-                  },
-                  (fallbackError: unknown) => {
-                    console.error('Error loading fallback model:', fallbackError)
-                    setModelLoading(false)
-                  }
-                )
-              }
-            }
-          }
-        )
-      }
       
       // Handle window resize
       const handleResize = () => {
@@ -384,6 +240,245 @@ function ARViewerContent() {
       setError('Three.js başladıla bilmədi')
     }
   }
+
+  // Load the 3D model separately from initialization
+  const loadModel = async () => {
+    if (!product || !sceneRef.current) return;
+    
+    try {
+      console.log('Loading model:', product.modelUrl);
+      setModelLoading(true);
+      setLoadingProgress(0);
+      
+      // Create a loading manager to track progress
+      const loadingManager = new THREE.LoadingManager();
+      loadingManager.onProgress = (url, loaded, total) => {
+        const percent = (loaded / total * 100).toFixed(2);
+        console.log(`Loading progress: ${percent}% (${loaded}/${total} bytes)`);
+        setLoadingProgress(Number(percent));
+      };
+      
+      const loader = new GLTFLoader(loadingManager);
+      
+      // Check if model is already in cache
+      if (modelCache[product.modelUrl]) {
+        console.log('Model found in cache, using cached version');
+        const cachedModel = modelCache[product.modelUrl].clone();
+        
+        // Center the model
+        const box = new THREE.Box3().setFromObject(cachedModel);
+        const center = box.getCenter(new THREE.Vector3());
+        cachedModel.position.sub(center);
+        
+        // Scale the model appropriately
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 1 / maxDim;
+        cachedModel.scale.multiplyScalar(scale);
+        
+        // Position the model in front of the camera
+        cachedModel.position.set(0, 0, -1);
+        
+        // Make the model visible
+        cachedModel.visible = true;
+        
+        // Remove the placeholder cube
+        if (sceneRef.current) {
+          const cube = sceneRef.current.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry);
+          if (cube) sceneRef.current.remove(cube);
+        }
+        
+        if (sceneRef.current) {
+          sceneRef.current.add(cachedModel);
+          modelRef.current = cachedModel;
+          console.log('Cached model added to scene:', cachedModel);
+        }
+        
+        setModelLoading(false);
+      } else {
+        // Load the model
+        loader.load(
+          product.modelUrl,
+          (gltf: { scene: THREE.Object3D }) => {
+            console.log('Model loaded successfully:', product.modelUrl);
+            const model = gltf.scene;
+            
+            // Center the model
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            model.position.sub(center);
+            
+            // Scale the model appropriately
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scale = 1 / maxDim;
+            model.scale.multiplyScalar(scale);
+            
+            // Position the model in front of the camera
+            model.position.set(0, 0, -1);
+            
+            // Make the model visible
+            model.visible = true;
+            
+            // Remove the placeholder cube
+            if (sceneRef.current) {
+              const cube = sceneRef.current.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry);
+              if (cube) sceneRef.current.remove(cube);
+            }
+            
+            // Add to cache
+            modelCache[product.modelUrl] = model.clone();
+            
+            if (sceneRef.current) {
+              sceneRef.current.add(model);
+              modelRef.current = model;
+              console.log('Model added to scene and cached:', model);
+            }
+            
+            setModelLoading(false);
+          },
+          (progress) => {
+            const percent = (progress.loaded / progress.total * 100).toFixed(2);
+            console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`);
+            setLoadingProgress(Number(percent));
+          },
+          (error: unknown) => {
+            console.error('Error loading model:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Detailed error:', errorMessage);
+            setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage);
+            setModelLoading(false);
+            
+            // Try to load a fallback model if available
+            if (product.modelUrl !== 'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb') {
+              console.log('Attempting to load fallback model');
+              setModelLoading(true);
+              setLoadingProgress(0);
+              
+              // Check if fallback model is in cache
+              if (modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb']) {
+                console.log('Fallback model found in cache, using cached version');
+                const cachedModel = modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'].clone();
+                cachedModel.scale.set(0.5, 0.5, 0.5);
+                cachedModel.position.set(0, 0, -1);
+                
+                // Remove the placeholder cube
+                if (sceneRef.current) {
+                  const cube = sceneRef.current.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry);
+                  if (cube) sceneRef.current.remove(cube);
+                }
+                
+                if (sceneRef.current) {
+                  sceneRef.current.add(cachedModel);
+                  modelRef.current = cachedModel;
+                }
+                
+                setModelLoading(false);
+              } else {
+                loader.load(
+                  'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb',
+                  (gltf: { scene: THREE.Object3D }) => {
+                    console.log('Fallback model loaded successfully');
+                    const model = gltf.scene;
+                    model.scale.set(0.5, 0.5, 0.5);
+                    model.position.set(0, 0, -1);
+                    
+                    // Remove the placeholder cube
+                    if (sceneRef.current) {
+                      const cube = sceneRef.current.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry);
+                      if (cube) sceneRef.current.remove(cube);
+                    }
+                    
+                    // Add to cache
+                    modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'] = model.clone();
+                    
+                    if (sceneRef.current) {
+                      sceneRef.current.add(model);
+                      modelRef.current = model;
+                    }
+                    
+                    setModelLoading(false);
+                  },
+                  (progress) => {
+                    const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                    setLoadingProgress(Number(percent));
+                  },
+                  (fallbackError: unknown) => {
+                    console.error('Error loading fallback model:', fallbackError);
+                    setModelLoading(false);
+                  }
+                );
+              }
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error loading model:', error);
+      setModelLoading(false);
+    }
+  };
+
+  // Start AR session
+  const startAR = async () => {
+    try {
+      console.log('Starting AR session...');
+      if (!rendererRef.current) {
+        console.error('Renderer not initialized');
+        return;
+      }
+      
+      const session = await (navigator as any).xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay'],
+        domOverlay: { root: document.body }
+      });
+      
+      console.log('AR session created:', session);
+      sessionRef.current = session;
+      
+      // Set up AR session
+      rendererRef.current.xr.setReferenceSpaceType('local');
+      
+      // Set up hit testing
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      
+      // Handle frame updates
+      session.addEventListener('select', () => {
+        if (modelRef.current) {
+          // Place model at hit test location
+          const hitTestResults = session.renderState.hitTestResults;
+          if (hitTestResults.length > 0) {
+            const hit = hitTestResults[0];
+            const pose = hit.getPose(rendererRef.current?.xr.getReferenceSpace());
+            
+            if (pose) {
+              modelRef.current.position.set(
+                pose.transform.position.x,
+                pose.transform.position.y,
+                pose.transform.position.z
+              );
+              modelRef.current.visible = true;
+            }
+          }
+        }
+      });
+      
+      // Clean up when session ends
+      session.addEventListener('end', () => {
+        sessionRef.current = null;
+      });
+      
+      // Start the AR session
+      await rendererRef.current.xr.setSession(session);
+      console.log('AR session started successfully');
+    } catch (error) {
+      console.error('Error starting AR session:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError('AR sessiyası başladıla bilmədi: ' + errorMessage);
+    }
+  };
 
   useEffect(() => {
     // Find the product based on the ID from the URL
@@ -427,10 +522,22 @@ function ARViewerContent() {
 
     checkARSupport()
     
-    // Initialize Three.js immediately since we're using locally installed Three.js
-    if (canvasRef.current && foundProduct) {
+    // Initialize Three.js immediately
+    if (canvasRef.current) {
       console.log('Initializing Three.js immediately...')
       initThreeJS()
+    }
+    
+    // Load the model after a short delay to ensure UI is responsive
+    const modelLoadingTimer = setTimeout(() => {
+      if (foundProduct) {
+        console.log('Starting model loading...')
+        loadModel()
+      }
+    }, 100)
+    
+    return () => {
+      clearTimeout(modelLoadingTimer)
     }
   }, [params.id])
 
@@ -579,61 +686,7 @@ function ARViewerContent() {
                 await sessionRef.current.end();
                 sessionRef.current = null;
               } else {
-                // Start AR session
-                try {
-                  console.log('Starting AR session...');
-                  if (rendererRef.current && rendererRef.current.xr) {
-                    const session = await (navigator as any).xr.requestSession('immersive-ar', {
-                      requiredFeatures: ['hit-test'],
-                      optionalFeatures: ['dom-overlay'],
-                      domOverlay: { root: document.body }
-                    });
-                    
-                    console.log('AR session created:', session);
-                    sessionRef.current = session;
-                    
-                    // Set up AR session
-                    rendererRef.current.xr.setReferenceSpaceType('local');
-                    
-                    // Set up hit testing
-                    const viewerSpace = await session.requestReferenceSpace('viewer');
-                    const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-                    
-                    // Handle frame updates
-                    session.addEventListener('select', () => {
-                      if (modelRef.current) {
-                        // Place model at hit test location
-                        const hitTestResults = session.renderState.hitTestResults;
-                        if (hitTestResults.length > 0) {
-                          const hit = hitTestResults[0];
-                          const pose = hit.getPose(rendererRef.current?.xr.getReferenceSpace());
-                          
-                          if (pose) {
-                            modelRef.current.position.set(
-                              pose.transform.position.x,
-                              pose.transform.position.y,
-                              pose.transform.position.z
-                            );
-                            modelRef.current.visible = true;
-                          }
-                        }
-                      }
-                    });
-                    
-                    // Clean up when session ends
-                    session.addEventListener('end', () => {
-                      sessionRef.current = null;
-                    });
-                    
-                    // Start the AR session
-                    await rendererRef.current.xr.setSession(session);
-                    console.log('AR session started successfully');
-                  }
-                } catch (error) {
-                  console.error('Error starting AR session:', error);
-                  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                  setError('AR sessiyası başladıla bilmədi: ' + errorMessage);
-                }
+                await startAR();
               }
             }}
             className="mt-2"
