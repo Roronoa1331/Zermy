@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react"
 import Script from "next/script"
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 // Define WebXR types
 declare global {
@@ -77,11 +78,13 @@ function ARViewerContent() {
   const [modelLoading, setModelLoading] = useState(false)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [threeJsInitialized, setThreeJsInitialized] = useState(false)
+  const [autoRotate, setAutoRotate] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const modelRef = useRef<THREE.Object3D | null>(null)
+  const controlsRef = useRef<OrbitControls | null>(null)
   const controllerRef = useRef<any>(null)
   const sessionRef = useRef<XRSession | null>(null)
 
@@ -162,6 +165,18 @@ function ARViewerContent() {
         renderer.xr.enabled = true
         rendererRef.current = renderer
         console.log('Renderer created and configured')
+        
+        // Add orbit controls
+        const controls = new OrbitControls(camera, renderer.domElement)
+        controls.enableDamping = true
+        controls.dampingFactor = 0.05
+        controls.screenSpacePanning = false
+        controls.minDistance = 2
+        controls.maxDistance = 10
+        controls.maxPolarAngle = Math.PI / 2
+        controls.autoRotate = autoRotate
+        controlsRef.current = controls
+        console.log('Orbit controls added')
         
         // Add lights
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
@@ -252,8 +267,8 @@ function ARViewerContent() {
         
         // Animation loop
         const animate = () => {
-          if (modelRef.current) {
-            modelRef.current.rotation.y += 0.01
+          if (controlsRef.current) {
+            controlsRef.current.update()
           }
           
           renderer.render(scene, camera)
@@ -418,6 +433,43 @@ function ARViewerContent() {
         </Button>
       </div>
       
+      <div className="fixed top-4 right-4 z-10 flex gap-2">
+        <Button 
+          variant="outline" 
+          className="bg-white/80 backdrop-blur-sm"
+          onClick={() => {
+            if (controlsRef.current) {
+              setAutoRotate(!autoRotate)
+              controlsRef.current.autoRotate = !autoRotate
+            }
+          }}
+        >
+          {autoRotate ? 'Avtomatik fırlatmanı dayandır' : 'Avtomatik fırlatma'}
+        </Button>
+        <Button 
+          variant="outline" 
+          className="bg-white/80 backdrop-blur-sm"
+          onClick={() => {
+            if (controlsRef.current) {
+              controlsRef.current.reset()
+              if (modelRef.current) {
+                modelRef.current.rotation.set(0, 0, 0)
+              }
+            }
+          }}
+        >
+          Yenidən başlat
+        </Button>
+      </div>
+      
+      <div className="fixed top-16 left-4 z-10">
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg max-w-xs">
+          <h2 className="text-xl font-bold mb-2">{product.name}</h2>
+          <p className="text-gray-700 mb-2">{product.description}</p>
+          <p className="text-lg font-semibold">{product.price.toFixed(2)} ₼</p>
+        </div>
+      </div>
+      
       <div className="fixed inset-0 z-0">
         <canvas ref={canvasRef} className="w-full h-full" />
       </div>
@@ -450,6 +502,14 @@ function ARViewerContent() {
       <div className="fixed bottom-4 left-0 right-0 text-center z-10">
         <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg inline-block">
           <p className="mb-2">AR-da məhsulu görmək üçün ekranı boş bir səthə yönləndirin və toxunun</p>
+          <div className="text-sm text-gray-600 mb-2">
+            <p>3D modeli idarə etmək üçün:</p>
+            <ul className="list-disc list-inside">
+              <li>Fırlatmaq üçün: Sürüşdürün</li>
+              <li>Yaxınlaşdırmaq üçün: İki barmaqla sıxın</li>
+              <li>Avtomatik fırlatma üçün: Yuxarıdakı düyməni istifadə edin</li>
+            </ul>
+          </div>
           <Button 
             onClick={() => {
               if (sessionRef.current) {
