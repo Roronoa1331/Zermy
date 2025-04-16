@@ -42,8 +42,8 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    // Using the existing base_basic_shaded.gltf file
-    modelUrl: "/models/products/base_basic_shaded.gltf",
+    // Using the new .glb model file
+    modelUrl: "/models/products/bag/base_basic_shaded.glb",
   },
   {
     id: 2,
@@ -51,8 +51,8 @@ const products = [
     price: 300.00,
     image: "https://m.media-amazon.com/images/S/al-na-9d5791cf-3faf/cde13f96-75ba-4b9f-87c5-1257b41cbfef._SL480_.jpg",
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
-    // Using the existing base_basic_shaded.gltf file
-    modelUrl: "/models/products/base_basic_shaded.gltf",
+    // Using the existing model file
+    modelUrl: "/models/products/carpet/model.gltf",
   },
   // To add a new product:
   // 1. Create a new directory under public/models/products/
@@ -242,12 +242,12 @@ function ARViewerContent() {
             setModelLoading(false)
             
             // Try to load a fallback model if available
-            if (product.modelUrl !== '/models/products/base_basic_shaded.gltf') {
+            if (product.modelUrl !== '/models/products/bag/base_basic_shaded.glb') {
               console.log('Attempting to load fallback model')
               setModelLoading(true)
               setLoadingProgress(0)
               loader.load(
-                '/models/products/base_basic_shaded.gltf',
+                '/models/products/bag/base_basic_shaded.glb',
                 (gltf: { scene: THREE.Object3D }) => {
                   console.log('Fallback model loaded successfully')
                   const model = gltf.scene
