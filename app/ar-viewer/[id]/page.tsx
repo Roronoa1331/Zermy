@@ -154,20 +154,42 @@ function ARViewerContent() {
       });
       
       // Add a custom event listener for AR button clicks
-      modelViewer.addEventListener('ar-button-click', () => {
+      modelViewer.addEventListener('ar-button-click', (event: Event) => {
         console.log('AR button clicked');
+        // Prevent default behavior to avoid navigation
+        event.preventDefault();
+        
         // Request camera permissions explicitly
         navigator.mediaDevices.getUserMedia({ video: true })
           .then(stream => {
             console.log('Camera permission granted');
             // Stop the stream immediately - we just needed permission
             stream.getTracks().forEach(track => track.stop());
+            
+            // Manually activate AR
+            if (modelViewer.canActivateAR) {
+              console.log('Activating AR manually');
+              modelViewer.activateAR();
+            } else {
+              console.log('AR activation not available');
+              alert('AR aktivləşdirilə bilmədi. Zəhmət olmasa başqa bir cəhd edin.');
+            }
           })
           .catch(err => {
             console.error('Camera permission denied:', err);
             alert('Kamera icazəsi verilmədi. AR funksiyası üçün kamera icazəsi lazımdır.');
           });
       });
+      
+      // Add a custom event listener for the AR button to prevent navigation
+      const arButton = modelViewer.shadowRoot?.querySelector('button[slot="ar-button"]');
+      if (arButton) {
+        arButton.addEventListener('click', (event: Event) => {
+          console.log('AR button clicked (shadow DOM)');
+          event.preventDefault();
+          event.stopPropagation();
+        });
+      }
     }
   };
 
@@ -266,7 +288,7 @@ function ARViewerContent() {
           onLoad={handleModelLoad}
           onError={handleModelError}
         >
-          <button slot="ar-button" className="arbutton">
+          <button slot="ar-button" className="arbutton" onClick={(e) => e.preventDefault()}>
             AR-da bax
           </button>
         </model-viewer>
