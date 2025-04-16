@@ -206,8 +206,24 @@ function ARViewerContent() {
           (gltf: { scene: THREE.Object3D }) => {
             console.log('Model loaded successfully:', product.modelUrl)
             const model = gltf.scene
-            model.scale.set(0.5, 0.5, 0.5)
+            
+            // Center the model
+            const box = new THREE.Box3().setFromObject(model)
+            const center = box.getCenter(new THREE.Vector3())
+            model.position.sub(center)
+            
+            // Scale the model appropriately
+            const size = box.getSize(new THREE.Vector3())
+            const maxDim = Math.max(size.x, size.y, size.z)
+            const scale = 1 / maxDim
+            model.scale.multiplyScalar(scale)
+            
+            // Position the model in front of the camera
             model.position.set(0, 0, -1)
+            
+            // Make the model visible
+            model.visible = true
+            
             scene.add(model)
             modelRef.current = model
             console.log('Model added to scene:', model)
@@ -267,8 +283,13 @@ function ARViewerContent() {
         
         // Animation loop
         const animate = () => {
-          if (controlsRef.current) {
+          if (controlsRef.current && !sessionRef.current) {
             controlsRef.current.update()
+          }
+          
+          if (modelRef.current && sessionRef.current) {
+            // In AR mode, make sure the model is visible
+            modelRef.current.visible = true
           }
           
           renderer.render(scene, camera)
@@ -510,25 +531,75 @@ function ARViewerContent() {
               <li>Avtomatik fırlatma üçün: Yuxarıdakı düyməni istifadə edin</li>
             </ul>
           </div>
+          <div className="text-sm text-blue-600 font-medium mb-2">
+            <p>AR rejimində məhsulu yerləşdirmək üçün:</p>
+            <ol className="list-decimal list-inside">
+              <li>"AR-da bax" düyməsinə toxunun</li>
+              <li>Kameranı boş bir səthə yönləndirin</li>
+              <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+              <li>Məhsulu hərəkət etdirmək üçün onu sürüşdürün</li>
+            </ol>
+          </div>
           <Button 
-            onClick={() => {
+            onClick={async () => {
               if (sessionRef.current) {
-                sessionRef.current.end();
+                await sessionRef.current.end();
                 sessionRef.current = null;
               } else {
                 // Start AR session
-                if (rendererRef.current && rendererRef.current.xr) {
-                  (navigator as any).xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['hit-test'],
-                    optionalFeatures: ['dom-overlay'],
-                    domOverlay: { root: document.body }
-                  }).then((session: any) => {
+                try {
+                  console.log('Starting AR session...');
+                  if (rendererRef.current && rendererRef.current.xr) {
+                    const session = await (navigator as any).xr.requestSession('immersive-ar', {
+                      requiredFeatures: ['hit-test'],
+                      optionalFeatures: ['dom-overlay'],
+                      domOverlay: { root: document.body }
+                    });
+                    
+                    console.log('AR session created:', session);
                     sessionRef.current = session;
-                    rendererRef.current?.xr.setSession(session);
-                  }).catch((error: Error) => {
-                    console.error('Error starting AR session:', error);
-                    setError('AR sessiyası başladıla bilmədi: ' + error.message);
-                  });
+                    
+                    // Set up AR session
+                    rendererRef.current.xr.setReferenceSpaceType('local');
+                    
+                    // Set up hit testing
+                    const viewerSpace = await session.requestReferenceSpace('viewer');
+                    const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+                    
+                    // Handle frame updates
+                    session.addEventListener('select', () => {
+                      if (modelRef.current) {
+                        // Place model at hit test location
+                        const hitTestResults = session.renderState.hitTestResults;
+                        if (hitTestResults.length > 0) {
+                          const hit = hitTestResults[0];
+                          const pose = hit.getPose(rendererRef.current?.xr.getReferenceSpace());
+                          
+                          if (pose) {
+                            modelRef.current.position.set(
+                              pose.transform.position.x,
+                              pose.transform.position.y,
+                              pose.transform.position.z
+                            );
+                            modelRef.current.visible = true;
+                          }
+                        }
+                      }
+                    });
+                    
+                    // Clean up when session ends
+                    session.addEventListener('end', () => {
+                      sessionRef.current = null;
+                    });
+                    
+                    // Start the AR session
+                    await rendererRef.current.xr.setSession(session);
+                    console.log('AR session started successfully');
+                  }
+                } catch (error) {
+                  console.error('Error starting AR session:', error);
+                  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                  setError('AR sessiyası başladıla bilmədi: ' + errorMessage);
                 }
               }
             }}
