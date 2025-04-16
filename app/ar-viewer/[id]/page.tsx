@@ -18,6 +18,8 @@ const products = [
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
     // Using the local bag.glb file
     modelUrl: "/models/products/bag/bag.glb",
+    // Add USDZ format for iOS Quick Look
+    usdzUrl: "/models/products/bag/bag.usdz",
   },
   {
     id: 2,
@@ -27,6 +29,8 @@ const products = [
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
     // Using the existing model file
     modelUrl: "/models/products/carpet/model.gltf",
+    // Add USDZ format for iOS Quick Look
+    usdzUrl: "/models/products/carpet/model.usdz",
   },
   // To add a new product:
   // 1. Create a new directory under public/models/products/
@@ -73,9 +77,12 @@ function ARViewerContent() {
   const [isARSupported, setIsARSupported] = useState<boolean | null>(null)
   const [isARActive, setIsARActive] = useState(false)
   const [arError, setARError] = useState<string | null>(null)
+  const [isIOS, setIsIOS] = useState(false)
+  const [isAndroid, setIsAndroid] = useState(false)
   const modelContainerRef = useRef<HTMLDivElement>(null)
   const arButtonRef = useRef<HTMLButtonElement>(null)
   const modelViewerRef = useRef<HTMLDivElement>(null)
+  const quickLookRef = useRef<HTMLAnchorElement>(null)
 
   // Find the product based on the ID from the URL
   useEffect(() => {
@@ -98,8 +105,22 @@ function ARViewerContent() {
     return () => clearTimeout(loadingTimeout)
   }, [params.id])
 
-  // Check if AR is supported
+  // Detect device type
   useEffect(() => {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    
+    // iOS detection
+    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
+      setIsIOS(true);
+      setIsAndroid(false);
+    } 
+    // Android detection
+    else if (/android/i.test(userAgent)) {
+      setIsIOS(false);
+      setIsAndroid(true);
+    }
+    
+    // Check if AR is supported
     const checkARSupport = async () => {
       try {
         // Check if WebXR is supported
@@ -147,6 +168,14 @@ function ARViewerContent() {
     try {
       setIsARActive(true);
       setARError(null);
+      
+      // For iOS, trigger Quick Look
+      if (isIOS && quickLookRef.current) {
+        // Small delay to ensure the UI is updated
+        setTimeout(() => {
+          quickLookRef.current?.click();
+        }, 100);
+      }
     } catch (err) {
       console.error("Error starting AR session:", err);
       setARError('AR sessiyası başladıla bilmədi. Zəhmət olmasa yenidən cəhd edin.');
@@ -188,6 +217,18 @@ function ARViewerContent() {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Head>
+      
+      {/* Hidden Quick Look link for iOS */}
+      {isIOS && (
+        <a 
+          ref={quickLookRef}
+          rel="ar" 
+          href={product.usdzUrl}
+          style={{ display: 'none' }}
+        >
+          View in AR
+        </a>
+      )}
       
       <div className="fixed top-4 left-4 z-10">
         <Button asChild variant="outline" className="bg-white/80 backdrop-blur-sm">
@@ -237,9 +278,9 @@ function ARViewerContent() {
             
             <Button 
               ref={arButtonRef}
-              className={`${isARSupported === false ? 'bg-gray-400 hover:bg-gray-500' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              className={`${isARSupported === false && !isIOS ? 'bg-gray-400 hover:bg-gray-500' : 'bg-green-600 hover:bg-green-700'} text-white`}
               onClick={handleARButtonClick}
-              disabled={isARSupported === false}
+              disabled={isARSupported === false && !isIOS}
             >
               AR-da bax
             </Button>
@@ -252,9 +293,15 @@ function ARViewerContent() {
             </Button>
           </div>
           
-          {isARSupported === false && (
+          {isARSupported === false && !isIOS && (
             <p className="mt-4 text-sm text-red-500">
               Sizin cihazınız AR-ni dəstəkləmir. Zəhmət olmasa başqa bir cihaz istifadə edin.
+            </p>
+          )}
+          
+          {isIOS && (
+            <p className="mt-4 text-sm text-blue-500">
+              iPhone istifadəçiləri üçün: "AR-da bax" düyməsinə toxunduqda Quick Look açılacaq.
             </p>
           )}
         </div>
@@ -299,7 +346,7 @@ function ARViewerContent() {
         </div>
       )}
       
-      {isARActive && (
+      {isARActive && !isIOS && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
           <div className="bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center">
             <h2 className="text-xl font-bold">{product.name} - AR</h2>
@@ -355,12 +402,23 @@ function ARViewerContent() {
               </ol>
               
               <p className="mb-2 font-medium">AR-da görmək üçün:</p>
-              <ol className="list-decimal list-inside text-left mb-4">
-                <li>"AR-da bax" düyməsinə toxunun</li>
-                <li>Kameranı boş bir səthə yönləndirin</li>
-                <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
-                <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
-              </ol>
+              {isIOS ? (
+                <ol className="list-decimal list-inside text-left mb-4">
+                  <li>"AR-da bax" düyməsinə toxunun</li>
+                  <li>Quick Look açılacaq</li>
+                  <li>"AR-da gör" düyməsinə toxunun</li>
+                  <li>Kameranı boş bir səthə yönləndirin</li>
+                  <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+                  <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
+                </ol>
+              ) : (
+                <ol className="list-decimal list-inside text-left mb-4">
+                  <li>"AR-da bax" düyməsinə toxunun</li>
+                  <li>Kameranı boş bir səthə yönləndirin</li>
+                  <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+                  <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
+                </ol>
+              )}
               
               <p className="mb-2 font-medium">Mobil cihazda görmək üçün:</p>
               <ol className="list-decimal list-inside text-left">
