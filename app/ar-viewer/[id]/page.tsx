@@ -41,7 +41,8 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    modelUrl: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF/Box.gltf", // Replace with actual 3D model URL
+    // Add your model file to: public/models/products/bag/model.gltf
+    modelUrl: "/models/products/models/base_basic_shaded.gltf",
   },
   {
     id: 2,
@@ -49,9 +50,22 @@ const products = [
     price: 300.00,
     image: "https://m.media-amazon.com/images/S/al-na-9d5791cf-3faf/cde13f96-75ba-4b9f-87c5-1257b41cbfef._SL480_.jpg",
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
-    modelUrl: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF/Box.gltf", // Replace with actual 3D model URL
+    // Add your model file to: public/models/products/carpet/model.gltf
+    modelUrl: "/models/products/carpet/model.gltf",
   },
-  // Add modelUrl for other products
+  // To add a new product:
+  // 1. Create a new directory under public/models/products/
+  // 2. Add your .gltf or .glb model file
+  // 3. Add a new product object here with the modelUrl pointing to your model
+  // Example:
+  // {
+  //   id: 3,
+  //   name: "New Product",
+  //   price: 100.00,
+  //   image: "path/to/image.jpg",
+  //   description: "Product description",
+  //   modelUrl: "/models/products/new-product/model.gltf",
+  // },
 ]
 
 function ARViewerContent() {
