@@ -19,6 +19,55 @@ declare global {
   }
 }
 
+// Model cache to prevent reloading the same model
+const modelCache: Record<string, THREE.Object3D> = {};
+
+// Preload models in the background
+const preloadModels = () => {
+  // Create a loading manager for preloading
+  const loadingManager = new THREE.LoadingManager();
+  loadingManager.onProgress = (url, loaded, total) => {
+    console.log(`Preloading progress: ${(loaded / total * 100).toFixed(2)}% (${loaded}/${total} bytes)`);
+  };
+  
+  const loader = new GLTFLoader(loadingManager);
+  
+  // Preload all product models
+  products.forEach(product => {
+    if (!modelCache[product.modelUrl]) {
+      console.log(`Preloading model: ${product.modelUrl}`);
+      loader.load(
+        product.modelUrl,
+        (gltf) => {
+          console.log(`Model preloaded: ${product.modelUrl}`);
+          modelCache[product.modelUrl] = gltf.scene.clone();
+        },
+        undefined,
+        (error) => {
+          console.error(`Error preloading model ${product.modelUrl}:`, error);
+        }
+      );
+    }
+  });
+  
+  // Preload fallback model
+  const fallbackModelUrl = '/models/products/bag/base_basic_shaded.glb';
+  if (!modelCache[fallbackModelUrl]) {
+    console.log(`Preloading fallback model: ${fallbackModelUrl}`);
+    loader.load(
+      fallbackModelUrl,
+      (gltf) => {
+        console.log(`Fallback model preloaded: ${fallbackModelUrl}`);
+        modelCache[fallbackModelUrl] = gltf.scene.clone();
+      },
+      undefined,
+      (error) => {
+        console.error(`Error preloading fallback model:`, error);
+      }
+    );
+  }
+};
+
 interface XRSession extends EventTarget {
   end(): Promise<void>;
   requestReferenceSpace(referenceSpaceType: string): Promise<any>;
@@ -139,101 +188,7 @@ function ARViewerContent() {
       scene.add(directionalLight)
       console.log('Lights added to scene')
       
-      // Load 3D model
-      const loader = new GLTFLoader()
-      console.log('Attempting to load model from:', product.modelUrl)
-      setModelLoading(true)
-      setLoadingProgress(0)
-      
-      // Add a simple cube as a fallback in case the model fails to load
-      const geometry = new THREE.BoxGeometry(1, 1, 1)
-      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
-      const cube = new THREE.Mesh(geometry, material)
-      cube.position.set(0, 0, -2)
-      scene.add(cube)
-      console.log('Added fallback cube to scene')
-      
-      loader.load(
-        product.modelUrl,
-        (gltf: { scene: THREE.Object3D }) => {
-          console.log('Model loaded successfully:', product.modelUrl)
-          const model = gltf.scene
-          
-          // Center the model
-          const box = new THREE.Box3().setFromObject(model)
-          const center = box.getCenter(new THREE.Vector3())
-          model.position.sub(center)
-          
-          // Scale the model appropriately
-          const size = box.getSize(new THREE.Vector3())
-          const maxDim = Math.max(size.x, size.y, size.z)
-          const scale = 1 / maxDim
-          model.scale.multiplyScalar(scale)
-          
-          // Position the model in front of the camera
-          model.position.set(0, 0, -1)
-          
-          // Make the model visible
-          model.visible = true
-          
-          scene.add(model)
-          modelRef.current = model
-          console.log('Model added to scene:', model)
-          setModelLoading(false)
-        },
-        (progress) => {
-          const percent = (progress.loaded / progress.total * 100).toFixed(2)
-          console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`)
-          setLoadingProgress(Number(percent))
-        },
-        (error: unknown) => {
-          console.error('Error loading model:', error)
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          console.error('Detailed error:', errorMessage)
-          setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage)
-          setModelLoading(false)
-          
-          // Try to load a fallback model if available
-          if (product.modelUrl !== '/models/products/bag/base_basic_shaded.glb') {
-            console.log('Attempting to load fallback model')
-            setModelLoading(true)
-            setLoadingProgress(0)
-            loader.load(
-              '/models/products/bag/base_basic_shaded.glb',
-              (gltf: { scene: THREE.Object3D }) => {
-                console.log('Fallback model loaded successfully')
-                const model = gltf.scene
-                model.scale.set(0.5, 0.5, 0.5)
-                model.position.set(0, 0, -1)
-                scene.add(model)
-                modelRef.current = model
-                setModelLoading(false)
-              },
-              (progress) => {
-                const percent = (progress.loaded / progress.total * 100).toFixed(2)
-                setLoadingProgress(Number(percent))
-              },
-              (fallbackError: unknown) => {
-                console.error('Error loading fallback model:', fallbackError)
-                setModelLoading(false)
-              }
-            )
-          }
-        }
-      )
-      
-      // Handle window resize
-      const handleResize = () => {
-        if (cameraRef.current && rendererRef.current) {
-          cameraRef.current.aspect = window.innerWidth / window.innerHeight
-          cameraRef.current.updateProjectionMatrix()
-          rendererRef.current.setSize(window.innerWidth, window.innerHeight)
-        }
-      }
-      
-      window.addEventListener('resize', handleResize)
-      
-      // Animation loop
+      // Start animation loop immediately to show something to the user
       const animate = () => {
         if (controlsRef.current && !sessionRef.current) {
           controlsRef.current.update()
@@ -250,7 +205,174 @@ function ARViewerContent() {
       
       console.log('Starting animation loop')
       animate()
+      
+      // Add a simple cube as a placeholder while the model loads
+      const geometry = new THREE.BoxGeometry(1, 1, 1)
+      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+      const cube = new THREE.Mesh(geometry, material)
+      cube.position.set(0, 0, -2)
+      scene.add(cube)
+      console.log('Added placeholder cube to scene')
+      
+      // Set Three.js as initialized so the loading indicator goes away
       setThreeJsInitialized(true)
+      
+      // Create a loading manager to track progress
+      const loadingManager = new THREE.LoadingManager();
+      loadingManager.onProgress = (url, loaded, total) => {
+        const percent = (loaded / total * 100).toFixed(2);
+        console.log(`Loading progress: ${percent}% (${loaded}/${total} bytes)`);
+        setLoadingProgress(Number(percent));
+      };
+      
+      // Load 3D model in the background
+      const loader = new GLTFLoader(loadingManager)
+      console.log('Attempting to load model from:', product.modelUrl)
+      setModelLoading(true)
+      setLoadingProgress(0)
+      
+      // Check if model is already in cache
+      if (modelCache[product.modelUrl]) {
+        console.log('Model found in cache, using cached version')
+        const cachedModel = modelCache[product.modelUrl].clone()
+        
+        // Center the model
+        const box = new THREE.Box3().setFromObject(cachedModel)
+        const center = box.getCenter(new THREE.Vector3())
+        cachedModel.position.sub(center)
+        
+        // Scale the model appropriately
+        const size = box.getSize(new THREE.Vector3())
+        const maxDim = Math.max(size.x, size.y, size.z)
+        const scale = 1 / maxDim
+        cachedModel.scale.multiplyScalar(scale)
+        
+        // Position the model in front of the camera
+        cachedModel.position.set(0, 0, -1)
+        
+        // Make the model visible
+        cachedModel.visible = true
+        
+        // Remove the placeholder cube
+        scene.remove(cube)
+        
+        scene.add(cachedModel)
+        modelRef.current = cachedModel
+        console.log('Cached model added to scene:', cachedModel)
+        setModelLoading(false)
+      } else {
+        // Use a timeout to ensure the UI updates before starting the heavy model loading
+        setTimeout(() => {
+          loader.load(
+            product.modelUrl,
+            (gltf: { scene: THREE.Object3D }) => {
+              console.log('Model loaded successfully:', product.modelUrl)
+              const model = gltf.scene
+              
+              // Center the model
+              const box = new THREE.Box3().setFromObject(model)
+              const center = box.getCenter(new THREE.Vector3())
+              model.position.sub(center)
+              
+              // Scale the model appropriately
+              const size = box.getSize(new THREE.Vector3())
+              const maxDim = Math.max(size.x, size.y, size.z)
+              const scale = 1 / maxDim
+              model.scale.multiplyScalar(scale)
+              
+              // Position the model in front of the camera
+              model.position.set(0, 0, -1)
+              
+              // Make the model visible
+              model.visible = true
+              
+              // Remove the placeholder cube
+              scene.remove(cube)
+              
+              // Add to cache
+              modelCache[product.modelUrl] = model.clone()
+              
+              scene.add(model)
+              modelRef.current = model
+              console.log('Model added to scene and cached:', model)
+              setModelLoading(false)
+            },
+            (progress) => {
+              const percent = (progress.loaded / progress.total * 100).toFixed(2)
+              console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`)
+              setLoadingProgress(Number(percent))
+            },
+            (error: unknown) => {
+              console.error('Error loading model:', error)
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+              console.error('Detailed error:', errorMessage)
+              setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage)
+              setModelLoading(false)
+              
+              // Try to load a fallback model if available
+              if (product.modelUrl !== '/models/products/bag/base_basic_shaded.glb') {
+                console.log('Attempting to load fallback model')
+                setModelLoading(true)
+                setLoadingProgress(0)
+                
+                // Check if fallback model is in cache
+                if (modelCache['/models/products/bag/base_basic_shaded.glb']) {
+                  console.log('Fallback model found in cache, using cached version')
+                  const cachedModel = modelCache['/models/products/bag/base_basic_shaded.glb'].clone()
+                  cachedModel.scale.set(0.5, 0.5, 0.5)
+                  cachedModel.position.set(0, 0, -1)
+                  
+                  // Remove the placeholder cube
+                  scene.remove(cube)
+                  
+                  scene.add(cachedModel)
+                  modelRef.current = cachedModel
+                  setModelLoading(false)
+                } else {
+                  loader.load(
+                    '/models/products/bag/base_basic_shaded.glb',
+                    (gltf: { scene: THREE.Object3D }) => {
+                      console.log('Fallback model loaded successfully')
+                      const model = gltf.scene
+                      model.scale.set(0.5, 0.5, 0.5)
+                      model.position.set(0, 0, -1)
+                      
+                      // Remove the placeholder cube
+                      scene.remove(cube)
+                      
+                      // Add to cache
+                      modelCache['/models/products/bag/base_basic_shaded.glb'] = model.clone()
+                      
+                      scene.add(model)
+                      modelRef.current = model
+                      setModelLoading(false)
+                    },
+                    (progress) => {
+                      const percent = (progress.loaded / progress.total * 100).toFixed(2)
+                      setLoadingProgress(Number(percent))
+                    },
+                    (fallbackError: unknown) => {
+                      console.error('Error loading fallback model:', fallbackError)
+                      setModelLoading(false)
+                    }
+                  )
+                }
+              }
+            }
+          )
+        }, 100); // Small delay to ensure UI updates first
+      }
+      
+      // Handle window resize
+      const handleResize = () => {
+        if (cameraRef.current && rendererRef.current) {
+          cameraRef.current.aspect = window.innerWidth / window.innerHeight
+          cameraRef.current.updateProjectionMatrix()
+          rendererRef.current.setSize(window.innerWidth, window.innerHeight)
+        }
+      }
+      
+      window.addEventListener('resize', handleResize)
       
       // Start AR session
       const startAR = async () => {
@@ -367,6 +489,9 @@ function ARViewerContent() {
     
     console.log('Found product:', foundProduct)
     setProduct(foundProduct)
+    
+    // Preload models in the background
+    preloadModels();
     
     // Check if WebXR is supported
     const checkARSupport = async () => {
