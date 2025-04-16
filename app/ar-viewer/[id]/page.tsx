@@ -405,6 +405,7 @@ function ARViewerContent() {
     try {
       if (!rendererRef.current) {
         console.error('Renderer not initialized');
+        setError('Renderer başladıla bilmədi');
         return;
       }
       
@@ -417,9 +418,17 @@ function ARViewerContent() {
         return;
       }
       
-      // Request AR session
+      // Check if AR is supported
+      const isARSupported = await (navigator as any).xr.isSessionSupported('immersive-ar');
+      if (!isARSupported) {
+        console.error('AR is not supported on this device');
+        setError('AR bu cihazda dəstəklənmir');
+        return;
+      }
+      
+      // Request AR session with more specific options
       const session = await (navigator as any).xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test'],
+        requiredFeatures: ['hit-test', 'local'],
         optionalFeatures: ['dom-overlay'],
         domOverlay: { root: document.body }
       });
@@ -457,16 +466,21 @@ function ARViewerContent() {
       
       // Clean up when session ends
       session.addEventListener('end', () => {
+        console.log('AR session ended');
         sessionRef.current = null;
       });
       
       // Start the AR session
       await rendererRef.current.xr.setSession(session);
       console.log('AR session started successfully');
+      
+      // Show success message
+      alert('AR sessiyası başladıldı! Kameranı boş bir səthə yönləndirin və ekrana toxunun.');
     } catch (error) {
       console.error('Error starting AR session:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError('AR sessiyası başladıla bilmədi: ' + errorMessage);
+      alert('AR sessiyası başladıla bilmədi: ' + errorMessage);
     }
   };
 
@@ -488,11 +502,14 @@ function ARViewerContent() {
       try {
         if ('xr' in navigator) {
           const isSupported = await (navigator as any).xr.isSessionSupported('immersive-ar')
+          console.log('AR support check:', isSupported);
           setArSupported(isSupported)
         } else {
+          console.log('WebXR not available in this browser');
           setArSupported(false)
         }
       } catch (error) {
+        console.error('Error checking AR support:', error);
         setArSupported(false)
       } finally {
         setIsLoading(false)
@@ -648,11 +665,18 @@ function ARViewerContent() {
                   sessionRef.current = null;
                 } else {
                   console.log('Starting new AR session');
+                  // Show a loading indicator
+                  setModelLoading(true);
+                  // Start AR session
                   await startAR();
+                  // Hide loading indicator
+                  setModelLoading(false);
                 }
               } catch (error) {
                 console.error('Error handling AR button click:', error);
                 setError('AR sessiyası başladıla bilmədi');
+                setModelLoading(false);
+                alert('AR sessiyası başladıla bilmədi. Zəhmət olmasa başqa brauzer istifadə edin.');
               }
             }}
             className="mt-2"

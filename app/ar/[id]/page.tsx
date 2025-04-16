@@ -14,7 +14,7 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    modelUrl: "https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb", // Replace with actual 3D model URL
+    modelUrl: "/models/products/bag/bag.glb", // Replace with actual 3D model URL
   },
   {
     id: 2,
@@ -22,7 +22,7 @@ const products = [
     price: 300.00,
     image: "https://m.media-amazon.com/images/S/al-na-9d5791cf-3faf/cde13f96-75ba-4b9f-87c5-1257b41cbfef._SL480_.jpg",
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
-    modelUrl: "https://raw.githubusercontent.com/aframevr/aframe/master/examples/boilerplate/gltf/models/gltf-model.glb", // Replace with actual 3D model URL
+    modelUrl: "/models/products/bag/bag.glb", // Replace with actual 3D model URL
   },
   // Add modelUrl for other products
 ]
