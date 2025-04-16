@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, RotateCw, ZoomIn, ZoomOut } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import Head from "next/head"
 import Script from "next/script"
 
@@ -18,8 +18,6 @@ const products = [
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
     // Using the local bag.glb file
     modelUrl: "/models/products/bag/bag.glb",
-    // Add USDZ format for iOS Quick Look
-    usdzUrl: "/models/products/bag/bag.usdz",
   },
   {
     id: 2,
@@ -29,8 +27,6 @@ const products = [
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
     // Using the existing model file
     modelUrl: "/models/products/carpet/model.gltf",
-    // Add USDZ format for iOS Quick Look
-    usdzUrl: "/models/products/carpet/model.usdz",
   },
   // To add a new product:
   // 1. Create a new directory under public/models/products/
@@ -71,18 +67,10 @@ function ARViewerContent() {
   const [product, setProduct] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [showModel, setShowModel] = useState(false)
+  const [showAR, setShowAR] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)
-  const [isARSupported, setIsARSupported] = useState<boolean | null>(null)
-  const [isARActive, setIsARActive] = useState(false)
-  const [arError, setARError] = useState<string | null>(null)
-  const [isIOS, setIsIOS] = useState(false)
-  const [isAndroid, setIsAndroid] = useState(false)
-  const modelContainerRef = useRef<HTMLDivElement>(null)
-  const arButtonRef = useRef<HTMLButtonElement>(null)
-  const modelViewerRef = useRef<HTMLDivElement>(null)
-  const quickLookRef = useRef<HTMLAnchorElement>(null)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Find the product based on the ID from the URL
   useEffect(() => {
@@ -102,85 +90,27 @@ function ARViewerContent() {
       setIsLoading(false)
     }, 2000) // 2 seconds max loading time
     
+    // Check if device is mobile
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+    setIsMobile(isMobileDevice);
+    
     return () => clearTimeout(loadingTimeout)
   }, [params.id])
-
-  // Detect device type
-  useEffect(() => {
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-    
-    // iOS detection
-    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
-      setIsIOS(true);
-      setIsAndroid(false);
-    } 
-    // Android detection
-    else if (/android/i.test(userAgent)) {
-      setIsIOS(false);
-      setIsAndroid(true);
-    }
-    
-    // Check if AR is supported
-    const checkARSupport = async () => {
-      try {
-        // Check if WebXR is supported
-        if ('xr' in navigator) {
-          // Check if AR is supported
-          const isSupported = await (navigator as any).xr.isSessionSupported('immersive-ar');
-          setIsARSupported(isSupported);
-        } else {
-          setIsARSupported(false);
-        }
-      } catch (err) {
-        console.error("Error checking AR support:", err);
-        setIsARSupported(false);
-      }
-    };
-    
-    checkARSupport();
-  }, []);
-
-  // Handle fullscreen toggle
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else if (document.exitFullscreen) {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
-  };
 
   // Handle model button click
   const handleModelButtonClick = () => {
     setShowModel(true);
   };
 
+  // Handle AR button click
+  const handleARButtonClick = () => {
+    setShowAR(true);
+  };
+
   // Handle instructions button click
   const handleInstructionsButtonClick = () => {
     setShowInstructions(true);
-  };
-
-  // Handle AR button click
-  const handleARButtonClick = () => {
-    if (!product) return;
-    
-    try {
-      setIsARActive(true);
-      setARError(null);
-      
-      // For iOS, trigger Quick Look
-      if (isIOS && quickLookRef.current) {
-        // Small delay to ensure the UI is updated
-        setTimeout(() => {
-          quickLookRef.current?.click();
-        }, 100);
-      }
-    } catch (err) {
-      console.error("Error starting AR session:", err);
-      setARError('AR sessiyası başladıla bilmədi. Zəhmət olmasa yenidən cəhd edin.');
-      setIsARActive(false);
-    }
   };
 
   if (isLoading) {
@@ -218,34 +148,12 @@ function ARViewerContent() {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Head>
       
-      {/* Hidden Quick Look link for iOS */}
-      {isIOS && (
-        <a 
-          ref={quickLookRef}
-          rel="ar" 
-          href={product.usdzUrl}
-          style={{ display: 'none' }}
-        >
-          View in AR
-        </a>
-      )}
-      
       <div className="fixed top-4 left-4 z-10">
         <Button asChild variant="outline" className="bg-white/80 backdrop-blur-sm">
           <Link href="/products">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Geri qayıt
           </Link>
-        </Button>
-      </div>
-      
-      <div className="fixed top-4 right-4 z-10 flex gap-2">
-        <Button 
-          variant="outline" 
-          className="bg-white/80 backdrop-blur-sm"
-          onClick={toggleFullscreen}
-        >
-          {isFullscreen ? 'Tam ekrandan çıx' : 'Tam ekran'}
         </Button>
       </div>
       
@@ -277,10 +185,8 @@ function ARViewerContent() {
             </Button>
             
             <Button 
-              ref={arButtonRef}
-              className={`${isARSupported === false && !isIOS ? 'bg-gray-400 hover:bg-gray-500' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              className="bg-green-600 hover:bg-green-700 text-white"
               onClick={handleARButtonClick}
-              disabled={isARSupported === false && !isIOS}
             >
               AR-da bax
             </Button>
@@ -293,15 +199,9 @@ function ARViewerContent() {
             </Button>
           </div>
           
-          {isARSupported === false && !isIOS && (
-            <p className="mt-4 text-sm text-red-500">
-              Sizin cihazınız AR-ni dəstəkləmir. Zəhmət olmasa başqa bir cihaz istifadə edin.
-            </p>
-          )}
-          
-          {isIOS && (
+          {isMobile && (
             <p className="mt-4 text-sm text-blue-500">
-              iPhone istifadəçiləri üçün: "AR-da bax" düyməsinə toxunduqda Quick Look açılacaq.
+              Mobil cihazda AR istifadə etmək üçün brauzerinizə kamera icazəsi verməlisiniz.
             </p>
           )}
         </div>
@@ -320,10 +220,7 @@ function ARViewerContent() {
               </Button>
             </div>
             
-            <div 
-              ref={modelViewerRef}
-              className="flex-1 bg-gray-100 rounded-lg overflow-hidden relative"
-            >
+            <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden relative">
               <model-viewer
                 src={product.modelUrl}
                 camera-controls
@@ -346,13 +243,13 @@ function ARViewerContent() {
         </div>
       )}
       
-      {isARActive && !isIOS && (
+      {showAR && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
           <div className="bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center">
             <h2 className="text-xl font-bold">{product.name} - AR</h2>
             <Button 
               variant="outline" 
-              onClick={() => setIsARActive(false)}
+              onClick={() => setShowAR(false)}
             >
               Bağla
             </Button>
@@ -370,20 +267,6 @@ function ARViewerContent() {
               environment-image="neutral"
               style={{ width: '100%', height: '100%' }}
             ></model-viewer>
-            
-            {arError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
-                  <h3 className="text-xl font-bold mb-4">Xəta</h3>
-                  <p className="mb-4">{arError}</p>
-                  <Button 
-                    onClick={() => setIsARActive(false)}
-                  >
-                    Bağla
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -402,29 +285,20 @@ function ARViewerContent() {
               </ol>
               
               <p className="mb-2 font-medium">AR-da görmək üçün:</p>
-              {isIOS ? (
-                <ol className="list-decimal list-inside text-left mb-4">
-                  <li>"AR-da bax" düyməsinə toxunun</li>
-                  <li>Quick Look açılacaq</li>
-                  <li>"AR-da gör" düyməsinə toxunun</li>
-                  <li>Kameranı boş bir səthə yönləndirin</li>
-                  <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
-                  <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
-                </ol>
-              ) : (
-                <ol className="list-decimal list-inside text-left mb-4">
-                  <li>"AR-da bax" düyməsinə toxunun</li>
-                  <li>Kameranı boş bir səthə yönləndirin</li>
-                  <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
-                  <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
-                </ol>
-              )}
+              <ol className="list-decimal list-inside text-left mb-4">
+                <li>"AR-da bax" düyməsinə toxunun</li>
+                <li>Brauzer kamera icazəsi istəsə, "İcazə ver" düyməsinə toxunun</li>
+                <li>Kameranı boş bir səthə yönləndirin</li>
+                <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+                <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
+              </ol>
               
               <p className="mb-2 font-medium">Mobil cihazda görmək üçün:</p>
               <ol className="list-decimal list-inside text-left">
                 <li>Mobil cihazınızda brauzeri açın</li>
                 <li>Bu səhifəni açın</li>
                 <li>"AR-da bax" düyməsinə toxunun</li>
+                <li>Brauzer kamera icazəsi istəsə, "İcazə ver" düyməsinə toxunun</li>
               </ol>
             </div>
             
