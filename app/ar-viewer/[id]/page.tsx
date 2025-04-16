@@ -83,6 +83,13 @@ function ARViewerContent() {
     }
     
     setProduct(foundProduct)
+    
+    // Set a timeout to ensure loading state doesn't get stuck
+    const loadingTimeout = setTimeout(() => {
+      setIsLoading(false)
+    }, 5000) // 5 seconds max loading time
+    
+    return () => clearTimeout(loadingTimeout)
   }, [params.id])
 
   // Handle fullscreen toggle
@@ -113,6 +120,9 @@ function ARViewerContent() {
   const handleArButtonClick = () => {
     console.log('AR button clicked');
     setArButtonClicked(true);
+    
+    // Force loading state to false to ensure UI is visible
+    setIsLoading(false);
     
     // Request camera permissions explicitly
     navigator.mediaDevices.getUserMedia({ video: true })
@@ -275,6 +285,27 @@ function ARViewerContent() {
           </div>
         </div>
       </div>
+      
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">AR yüklənir...</h2>
+            <p className="mb-4">Zəhmət olmasa gözləyin.</p>
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-500 transition-all duration-300" 
+                style={{ width: '50%' }}
+              ></div>
+            </div>
+            <Button 
+              className="mt-4 w-full"
+              onClick={() => setIsLoading(false)}
+            >
+              Yükləməni ləğv et
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
