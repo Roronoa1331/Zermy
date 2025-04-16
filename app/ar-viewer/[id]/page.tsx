@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Script from "next/script"
+import Head from "next/head"
 // Import Three.js directly from CDN
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -81,6 +82,8 @@ function ARViewerContent() {
   const [threeJsInitialized, setThreeJsInitialized] = useState(false)
   const [autoRotate, setAutoRotate] = useState(false)
   const [threeJsLoaded, setThreeJsLoaded] = useState(false)
+  const [gltfLoaderLoaded, setGltfLoaderLoaded] = useState(false)
+  const [orbitControlsLoaded, setOrbitControlsLoaded] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -135,8 +138,10 @@ function ARViewerContent() {
     console.log('Canvas ref:', canvasRef.current)
     console.log('Product:', product)
     console.log('Three.js loaded:', threeJsLoaded)
+    console.log('GLTFLoader loaded:', gltfLoaderLoaded)
+    console.log('OrbitControls loaded:', orbitControlsLoaded)
     
-    if (!arSupported || !canvasRef.current || !product || !threeJsLoaded) {
+    if (!arSupported || !canvasRef.current || !product || !threeJsLoaded || !gltfLoaderLoaded || !orbitControlsLoaded) {
       console.log('Skipping Three.js initialization due to missing requirements')
       return
     }
@@ -411,7 +416,7 @@ function ARViewerContent() {
     }
     
     initThreeJS()
-  }, [arSupported, product, threeJsLoaded])
+  }, [arSupported, product, threeJsLoaded, gltfLoaderLoaded, orbitControlsLoaded])
 
   if (isLoading) {
     return (
@@ -453,6 +458,24 @@ function ARViewerContent() {
 
   return (
     <>
+      <Head>
+        <title>AR Viewer</title>
+        <link 
+          rel="preload" 
+          href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" 
+          as="script" 
+        />
+        <link 
+          rel="preload" 
+          href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js" 
+          as="script" 
+        />
+        <link 
+          rel="preload" 
+          href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js" 
+          as="script" 
+        />
+      </Head>
       <Script 
         src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" 
         strategy="beforeInteractive" 
@@ -463,6 +486,24 @@ function ARViewerContent() {
         onError={(e) => {
           console.error('Error loading Three.js:', e)
           setError('Three.js yüklənmədi. Zəhmət olmasa səhifəni yeniləyin.')
+        }}
+      />
+      
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js" 
+        strategy="afterInteractive"
+        onLoad={() => {
+          console.log('GLTFLoader loaded successfully')
+          setGltfLoaderLoaded(true)
+        }}
+      />
+      
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js" 
+        strategy="afterInteractive"
+        onLoad={() => {
+          console.log('OrbitControls loaded successfully')
+          setOrbitControlsLoaded(true)
         }}
       />
       
@@ -537,6 +578,22 @@ function ARViewerContent() {
               style={{ width: '50%' }}
             ></div>
           </div>
+        </div>
+      )}
+      
+      {threeJsLoaded && (!gltfLoaderLoaded || !orbitControlsLoaded) && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
+          <p className="mb-2">3D komponentlər yüklənir...</p>
+          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-300" 
+              style={{ width: gltfLoaderLoaded && orbitControlsLoaded ? '100%' : '70%' }}
+            ></div>
+          </div>
+          <p className="mt-2 text-sm">
+            {!gltfLoaderLoaded && 'GLTFLoader yüklənir... '}
+            {!orbitControlsLoaded && 'OrbitControls yüklənir...'}
+          </p>
         </div>
       )}
       
