@@ -67,38 +67,9 @@ function ARViewerContent() {
   const [product, setProduct] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [arSupported, setArSupported] = useState<boolean>(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const modelViewerRef = useRef<any>(null)
-
-  // Check if AR is supported
-  useEffect(() => {
-    const checkARSupport = () => {
-      // Check if the device is mobile - improved detection
-      const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      // Check if WebXR is supported
-      const hasWebXR = 'xr' in navigator;
-      
-      // Check if model-viewer is supported
-      const hasModelViewer = 'model-viewer' in document.createElement('model-viewer');
-      
-      console.log('AR support check:', { isMobile, hasWebXR, hasModelViewer });
-      
-      // Set AR as supported if on mobile
-      // We'll assume AR is supported on mobile devices even if model-viewer isn't detected yet
-      // This is because the model-viewer script might not be loaded when this check runs
-      setArSupported(isMobile);
-      setIsLoading(false);
-    };
-
-    // Run the check after a short delay to ensure the model-viewer script has loaded
-    const timer = setTimeout(() => {
-      checkARSupport();
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  const [arButtonClicked, setArButtonClicked] = useState(false)
 
   // Find the product based on the ID from the URL
   useEffect(() => {
@@ -112,7 +83,7 @@ function ARViewerContent() {
     }
     
     setProduct(foundProduct)
-  }, [params.id]);
+  }, [params.id])
 
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
@@ -129,68 +100,6 @@ function ARViewerContent() {
   const handleModelLoad = () => {
     console.log('Model loaded successfully');
     setIsLoading(false);
-    
-    // Add event listener to the model-viewer element to handle AR button clicks
-    if (modelViewerRef.current) {
-      const modelViewer = modelViewerRef.current;
-      
-      // Add a custom event listener for AR button clicks
-      modelViewer.addEventListener('ar-status', (event: any) => {
-        console.log('AR status changed:', event.detail.status);
-        
-        if (event.detail.status === 'session-started') {
-          console.log('AR session started successfully');
-          // Hide UI elements when AR is active
-          document.querySelectorAll('.fixed').forEach(el => {
-            (el as HTMLElement).style.display = 'none';
-          });
-        } else if (event.detail.status === 'session-ended') {
-          console.log('AR session ended');
-          // Show UI elements when AR is inactive
-          document.querySelectorAll('.fixed').forEach(el => {
-            (el as HTMLElement).style.display = '';
-          });
-        }
-      });
-      
-      // Add a custom event listener for AR button clicks
-      modelViewer.addEventListener('ar-button-click', (event: Event) => {
-        console.log('AR button clicked');
-        // Prevent default behavior to avoid navigation
-        event.preventDefault();
-        
-        // Request camera permissions explicitly
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => {
-            console.log('Camera permission granted');
-            // Stop the stream immediately - we just needed permission
-            stream.getTracks().forEach(track => track.stop());
-            
-            // Manually activate AR
-            if (modelViewer.canActivateAR) {
-              console.log('Activating AR manually');
-              modelViewer.activateAR();
-            } else {
-              console.log('AR activation not available');
-              alert('AR aktivləşdirilə bilmədi. Zəhmət olmasa başqa bir cəhd edin.');
-            }
-          })
-          .catch(err => {
-            console.error('Camera permission denied:', err);
-            alert('Kamera icazəsi verilmədi. AR funksiyası üçün kamera icazəsi lazımdır.');
-          });
-      });
-      
-      // Add a custom event listener for the AR button to prevent navigation
-      const arButton = modelViewer.shadowRoot?.querySelector('button[slot="ar-button"]');
-      if (arButton) {
-        arButton.addEventListener('click', (event: Event) => {
-          console.log('AR button clicked (shadow DOM)');
-          event.preventDefault();
-          event.stopPropagation();
-        });
-      }
-    }
   };
 
   // Handle model error
@@ -198,6 +107,49 @@ function ARViewerContent() {
     console.error('Error loading model:', error);
     setError('Model yüklənərkən xəta baş verdi');
     setIsLoading(false);
+  };
+
+  // Handle AR button click
+  const handleArButtonClick = () => {
+    console.log('AR button clicked');
+    setArButtonClicked(true);
+    
+    // Request camera permissions explicitly
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        console.log('Camera permission granted');
+        // Stop the stream immediately - we just needed permission
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Try to activate AR
+        if (modelViewerRef.current) {
+          try {
+            // Try to activate AR directly
+            if (modelViewerRef.current.canActivateAR) {
+              console.log('Activating AR directly');
+              modelViewerRef.current.activateAR();
+            } else {
+              console.log('AR not available directly, trying alternative method');
+              // Try to find the AR button in the shadow DOM and click it
+              const arButton = modelViewerRef.current.shadowRoot?.querySelector('button[slot="ar-button"]');
+              if (arButton) {
+                console.log('Found AR button in shadow DOM, clicking it');
+                (arButton as HTMLElement).click();
+              } else {
+                console.log('AR button not found in shadow DOM');
+                alert('AR aktivləşdirilə bilmədi. Zəhmət olmasa başqa bir cəhd edin.');
+              }
+            }
+          } catch (err) {
+            console.error('Error activating AR:', err);
+            alert('AR aktivləşdirilə bilmədi. Zəhmət olmasa başqa bir cəhd edin.');
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Camera permission denied:', err);
+        alert('Kamera icazəsi verilmədi. AR funksiyası üçün kamera icazəsi lazımdır.');
+      });
   };
 
   if (isLoading) {
@@ -288,7 +240,7 @@ function ARViewerContent() {
           onLoad={handleModelLoad}
           onError={handleModelError}
         >
-          <button slot="ar-button" className="arbutton" onClick={(e) => e.preventDefault()}>
+          <button slot="ar-button" className="arbutton">
             AR-da bax
           </button>
         </model-viewer>
@@ -296,6 +248,13 @@ function ARViewerContent() {
       
       <div className="fixed bottom-4 left-0 right-0 text-center z-10">
         <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg inline-block">
+          <Button 
+            className="mb-4 bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleArButtonClick}
+          >
+            AR-da bax
+          </Button>
+          
           <p className="mb-2">AR-da məhsulu görmək üçün ekranı boş bir səthə yönləndirin və toxunun</p>
           <div className="text-sm text-gray-600 mb-2">
             <p>3D modeli idarə etmək üçün:</p>
