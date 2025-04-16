@@ -404,15 +404,27 @@ function ARViewerContent() {
   const startAR = async () => {
     try {
       if (!rendererRef.current) {
+        console.error('Renderer not initialized');
         return;
       }
       
+      console.log('Starting AR session...');
+      
+      // Check if WebXR is supported
+      if (!('xr' in navigator)) {
+        console.error('WebXR not supported in this browser');
+        setError('WebXR bu brauzerdə dəstəklənmir');
+        return;
+      }
+      
+      // Request AR session
       const session = await (navigator as any).xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
         optionalFeatures: ['dom-overlay'],
         domOverlay: { root: document.body }
       });
       
+      console.log('AR session created:', session);
       sessionRef.current = session;
       
       // Set up AR session
@@ -450,8 +462,11 @@ function ARViewerContent() {
       
       // Start the AR session
       await rendererRef.current.xr.setSession(session);
+      console.log('AR session started successfully');
     } catch (error) {
       console.error('Error starting AR session:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError('AR sessiyası başladıla bilmədi: ' + errorMessage);
     }
   };
 
@@ -626,11 +641,18 @@ function ARViewerContent() {
           </div>
           <Button 
             onClick={async () => {
-              if (sessionRef.current) {
-                await sessionRef.current.end();
-                sessionRef.current = null;
-              } else {
-                await startAR();
+              try {
+                if (sessionRef.current) {
+                  console.log('Ending existing AR session');
+                  await sessionRef.current.end();
+                  sessionRef.current = null;
+                } else {
+                  console.log('Starting new AR session');
+                  await startAR();
+                }
+              } catch (error) {
+                console.error('Error handling AR button click:', error);
+                setError('AR sessiyası başladıla bilmədi');
               }
             }}
             className="mt-2"
