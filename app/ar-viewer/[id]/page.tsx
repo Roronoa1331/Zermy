@@ -43,6 +43,25 @@ const products = [
   // },
 ]
 
+// Declare model-viewer element for TypeScript
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        src: string;
+        ar?: boolean;
+        'ar-modes'?: string;
+        'camera-controls'?: boolean;
+        'auto-rotate'?: boolean;
+        'shadow-intensity'?: string;
+        exposure?: string;
+        'environment-image'?: string;
+        style?: React.CSSProperties;
+      }
+    }
+  }
+}
+
 function ARViewerContent() {
   const params = useParams()
   const [product, setProduct] = useState<any>(null)
@@ -51,18 +70,12 @@ function ARViewerContent() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showModel, setShowModel] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)
-  const [zoomLevel, setZoomLevel] = useState(1)
-  const [isAutoRotating, setIsAutoRotating] = useState(true)
-  const [isModelLoaded, setIsModelLoaded] = useState(false)
-  const [modelLoadingProgress, setModelLoadingProgress] = useState(0)
+  const [isARSupported, setIsARSupported] = useState<boolean | null>(null)
+  const [isARActive, setIsARActive] = useState(false)
+  const [arError, setARError] = useState<string | null>(null)
   const modelContainerRef = useRef<HTMLDivElement>(null)
-  const threeContainerRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<any>(null)
-  const cameraRef = useRef<any>(null)
-  const rendererRef = useRef<any>(null)
-  const modelRef = useRef<any>(null)
-  const controlsRef = useRef<any>(null)
-  const animationFrameRef = useRef<number>(0)
+  const arButtonRef = useRef<HTMLButtonElement>(null)
+  const modelViewerRef = useRef<HTMLDivElement>(null)
 
   // Find the product based on the ID from the URL
   useEffect(() => {
@@ -85,227 +98,26 @@ function ARViewerContent() {
     return () => clearTimeout(loadingTimeout)
   }, [params.id])
 
-  // Initialize Three.js when the model viewer is shown
+  // Check if AR is supported
   useEffect(() => {
-    if (!showModel || !threeContainerRef.current) return;
-
-    // Load Three.js scripts
-    const loadThreeJS = async () => {
+    const checkARSupport = async () => {
       try {
-        // Load Three.js
-        const threeScript = document.createElement('script');
-        threeScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
-        threeScript.async = true;
-        
-        // Load GLTFLoader
-        const gltfLoaderScript = document.createElement('script');
-        gltfLoaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js';
-        gltfLoaderScript.async = true;
-        
-        // Load OrbitControls
-        const orbitControlsScript = document.createElement('script');
-        orbitControlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js';
-        orbitControlsScript.async = true;
-        
-        // Load scripts in sequence
-        await new Promise<void>((resolve) => {
-          threeScript.onload = () => {
-            document.head.appendChild(gltfLoaderScript);
-            resolve();
-          };
-          document.head.appendChild(threeScript);
-        });
-        
-        await new Promise<void>((resolve) => {
-          gltfLoaderScript.onload = () => {
-            document.head.appendChild(orbitControlsScript);
-            resolve();
-          };
-        });
-        
-        await new Promise<void>((resolve) => {
-          orbitControlsScript.onload = () => {
-            resolve();
-          };
-        });
-        
-        // Initialize Three.js scene
-        initThreeJS();
+        // Check if WebXR is supported
+        if ('xr' in navigator) {
+          // Check if AR is supported
+          const isSupported = await (navigator as any).xr.isSessionSupported('immersive-ar');
+          setIsARSupported(isSupported);
+        } else {
+          setIsARSupported(false);
+        }
       } catch (err) {
-        console.error("Error loading Three.js:", err);
-        setError("3D model yüklənərkən xəta baş verdi");
+        console.error("Error checking AR support:", err);
+        setIsARSupported(false);
       }
     };
     
-    loadThreeJS();
-    
-    return () => {
-      // Clean up Three.js resources
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      
-      if (rendererRef.current) {
-        rendererRef.current.dispose();
-      }
-      
-      if (controlsRef.current) {
-        controlsRef.current.dispose();
-      }
-      
-      if (modelRef.current) {
-        modelRef.current.traverse((object: any) => {
-          if (object.geometry) {
-            object.geometry.dispose();
-          }
-          
-          if (object.material) {
-            if (Array.isArray(object.material)) {
-              object.material.forEach((material: any) => {
-                if (material.map) material.map.dispose();
-                material.dispose();
-              });
-            } else {
-              if (object.material.map) object.material.map.dispose();
-              object.material.dispose();
-            }
-          }
-        });
-      }
-    };
-  }, [showModel]);
-
-  // Initialize Three.js scene
-  const initThreeJS = () => {
-    if (!threeContainerRef.current || !product) return;
-    
-    // Create scene
-    const scene = new (window as any).THREE.Scene();
-    scene.background = new (window as any).THREE.Color(0xf0f0f0);
-    sceneRef.current = scene;
-    
-    // Create camera
-    const camera = new (window as any).THREE.PerspectiveCamera(
-      75,
-      threeContainerRef.current.clientWidth / threeContainerRef.current.clientHeight,
-      0.1,
-      1000
-    );
-    camera.position.z = 5;
-    cameraRef.current = camera;
-    
-    // Create renderer
-    const renderer = new (window as any).THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(threeContainerRef.current.clientWidth, threeContainerRef.current.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    threeContainerRef.current.innerHTML = '';
-    threeContainerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-    
-    // Add lights
-    const ambientLight = new (window as any).THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    
-    const directionalLight = new (window as any).THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-    
-    // Add orbit controls
-    const controls = new (window as any).THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 1;
-    controls.maxDistance = 10;
-    controls.maxPolarAngle = Math.PI / 2;
-    controlsRef.current = controls;
-    
-    // Load 3D model
-    const loader = new (window as any).THREE.GLTFLoader();
-    
-    // Add loading manager
-    const manager = new (window as any).THREE.LoadingManager();
-    manager.onProgress = (url: string, itemsLoaded: number, itemsTotal: number) => {
-      const progress = (itemsLoaded / itemsTotal) * 100;
-      setModelLoadingProgress(progress);
-    };
-    manager.onLoad = () => {
-      setIsModelLoaded(true);
-    };
-    manager.onError = (url: string) => {
-      console.error("Error loading model:", url);
-      setError("3D model yüklənərkən xəta baş verdi");
-    };
-    
-    loader.setManager(manager);
-    
-    // Load the model
-    loader.load(
-      product.modelUrl,
-      (gltf: any) => {
-        const model = gltf.scene;
-        
-        // Center the model
-        const box = new (window as any).THREE.Box3().setFromObject(model);
-        const center = box.getCenter(new (window as any).THREE.Vector3());
-        model.position.sub(center);
-        
-        // Scale the model
-        const size = box.getSize(new (window as any).THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 2 / maxDim;
-        model.scale.multiplyScalar(scale);
-        
-        scene.add(model);
-        modelRef.current = model;
-        
-        // Start animation loop
-        animate();
-      },
-      (xhr: any) => {
-        // Progress
-        const progress = (xhr.loaded / xhr.total) * 100;
-        setModelLoadingProgress(progress);
-      },
-      (error: any) => {
-        console.error("Error loading model:", error);
-        setError("3D model yüklənərkən xəta baş verdi");
-      }
-    );
-    
-    // Handle window resize
-    const handleResize = () => {
-      if (!threeContainerRef.current || !cameraRef.current || !rendererRef.current) return;
-      
-      cameraRef.current.aspect = threeContainerRef.current.clientWidth / threeContainerRef.current.clientHeight;
-      cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(threeContainerRef.current.clientWidth, threeContainerRef.current.clientHeight);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  };
-  
-  // Animation loop
-  const animate = () => {
-    if (!sceneRef.current || !cameraRef.current || !rendererRef.current || !controlsRef.current) return;
-    
-    animationFrameRef.current = requestAnimationFrame(animate);
-    
-    // Update controls
-    controlsRef.current.update();
-    
-    // Auto-rotate if enabled
-    if (isAutoRotating && modelRef.current) {
-      modelRef.current.rotation.y += 0.01;
-    }
-    
-    // Render scene
-    rendererRef.current.render(sceneRef.current, cameraRef.current);
-  };
+    checkARSupport();
+  }, []);
 
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
@@ -328,23 +140,18 @@ function ARViewerContent() {
     setShowInstructions(true);
   };
 
-  // Handle zoom in
-  const handleZoomIn = () => {
-    if (cameraRef.current) {
-      cameraRef.current.position.z = Math.max(cameraRef.current.position.z - 0.5, 1);
+  // Handle AR button click
+  const handleARButtonClick = () => {
+    if (!product) return;
+    
+    try {
+      setIsARActive(true);
+      setARError(null);
+    } catch (err) {
+      console.error("Error starting AR session:", err);
+      setARError('AR sessiyası başladıla bilmədi. Zəhmət olmasa yenidən cəhd edin.');
+      setIsARActive(false);
     }
-  };
-
-  // Handle zoom out
-  const handleZoomOut = () => {
-    if (cameraRef.current) {
-      cameraRef.current.position.z = Math.min(cameraRef.current.position.z + 0.5, 10);
-    }
-  };
-
-  // Handle auto rotate toggle
-  const handleAutoRotateToggle = () => {
-    setIsAutoRotating(prev => !prev);
   };
 
   if (isLoading) {
@@ -376,7 +183,7 @@ function ARViewerContent() {
   return (
     <>
       <Head>
-        <title>3D Viewer</title>
+        <title>AR Viewer</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -429,12 +236,27 @@ function ARViewerContent() {
             </Button>
             
             <Button 
-              className="bg-green-600 hover:bg-green-700 text-white"
+              ref={arButtonRef}
+              className={`${isARSupported === false ? 'bg-gray-400 hover:bg-gray-500' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              onClick={handleARButtonClick}
+              disabled={isARSupported === false}
+            >
+              AR-da bax
+            </Button>
+            
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700 text-white"
               onClick={handleInstructionsButtonClick}
             >
               İstifadə təlimatları
             </Button>
           </div>
+          
+          {isARSupported === false && (
+            <p className="mt-4 text-sm text-red-500">
+              Sizin cihazınız AR-ni dəstəkləmir. Zəhmət olmasa başqa bir cihaz istifadə edin.
+            </p>
+          )}
         </div>
       </div>
       
@@ -452,57 +274,69 @@ function ARViewerContent() {
             </div>
             
             <div 
-              ref={threeContainerRef}
+              ref={modelViewerRef}
               className="flex-1 bg-gray-100 rounded-lg overflow-hidden relative"
             >
-              {!isModelLoaded && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100">
-                  <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden mb-4">
-                    <div 
-                      className="h-full bg-blue-500 transition-all duration-300" 
-                      style={{ width: `${modelLoadingProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-gray-600">3D model yüklənir... {Math.round(modelLoadingProgress)}%</p>
-                </div>
-              )}
-              
-              <div className="absolute bottom-4 right-4 flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="bg-white/80 backdrop-blur-sm"
-                  onClick={handleZoomOut}
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="bg-white/80 backdrop-blur-sm"
-                  onClick={handleZoomIn}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className={`bg-white/80 backdrop-blur-sm ${isAutoRotating ? 'bg-blue-100' : ''}`}
-                  onClick={handleAutoRotateToggle}
-                >
-                  <RotateCw className="h-4 w-4" />
-                </Button>
-              </div>
+              <model-viewer
+                src={product.modelUrl}
+                camera-controls
+                auto-rotate
+                shadow-intensity="1"
+                exposure="1"
+                environment-image="neutral"
+                style={{ width: '100%', height: '100%' }}
+              ></model-viewer>
             </div>
             
             <div className="mt-4 text-sm text-gray-500">
               <p>3D modeli idarə etmək üçün:</p>
               <ul className="list-disc list-inside">
-                <li>Yaxınlaşdırmaq üçün: Yuxarıdakı düymələri istifadə edin</li>
-                <li>Avtomatik fırlatma üçün: Fırlatma düyməsini istifadə edin</li>
+                <li>Yaxınlaşdırmaq üçün: Ekrana toxunub sürüşdürün</li>
                 <li>Modeli fırlatmaq üçün: Ekrana toxunub sürüşdürün</li>
               </ul>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {isARActive && (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          <div className="bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center">
+            <h2 className="text-xl font-bold">{product.name} - AR</h2>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsARActive(false)}
+            >
+              Bağla
+            </Button>
+          </div>
+          
+          <div className="flex-1 relative">
+            <model-viewer
+              src={product.modelUrl}
+              ar
+              ar-modes="webxr scene-viewer quick-look"
+              camera-controls
+              auto-rotate
+              shadow-intensity="1"
+              exposure="1"
+              environment-image="neutral"
+              style={{ width: '100%', height: '100%' }}
+            ></model-viewer>
+            
+            {arError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+                  <h3 className="text-xl font-bold mb-4">Xəta</h3>
+                  <p className="mb-4">{arError}</p>
+                  <Button 
+                    onClick={() => setIsARActive(false)}
+                  >
+                    Bağla
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -516,16 +350,23 @@ function ARViewerContent() {
               <p className="mb-2 font-medium">3D modeli görmək üçün:</p>
               <ol className="list-decimal list-inside text-left mb-4">
                 <li>"3D modeli gör" düyməsinə toxunun</li>
-                <li>Modeli yaxınlaşdırmaq üçün yuxarıdakı düymələri istifadə edin</li>
-                <li>Modeli fırlatmaq üçün fırlatma düyməsini istifadə edin</li>
-                <li>Modeli ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
+                <li>Modeli yaxınlaşdırmaq üçün ekrana toxunub sürüşdürün</li>
+                <li>Modeli fırlatmaq üçün ekrana toxunub sürüşdürün</li>
+              </ol>
+              
+              <p className="mb-2 font-medium">AR-da görmək üçün:</p>
+              <ol className="list-decimal list-inside text-left mb-4">
+                <li>"AR-da bax" düyməsinə toxunun</li>
+                <li>Kameranı boş bir səthə yönləndirin</li>
+                <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+                <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
               </ol>
               
               <p className="mb-2 font-medium">Mobil cihazda görmək üçün:</p>
               <ol className="list-decimal list-inside text-left">
                 <li>Mobil cihazınızda brauzeri açın</li>
                 <li>Bu səhifəni açın</li>
-                <li>"3D modeli gör" düyməsinə toxunun</li>
+                <li>"AR-da bax" düyməsinə toxunun</li>
               </ol>
             </div>
             
@@ -538,6 +379,12 @@ function ARViewerContent() {
           </div>
         </div>
       )}
+      
+      <Script 
+        src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" 
+        type="module"
+        strategy="lazyOnload"
+      />
     </>
   )
 }
