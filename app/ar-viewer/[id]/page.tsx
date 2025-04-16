@@ -4,28 +4,8 @@ import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, RotateCw, ZoomIn, ZoomOut } from "lucide-react"
 import Head from "next/head"
-import Script from "next/script"
-
-// Declare model-viewer element for TypeScript
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
-        src: string;
-        alt: string;
-        ar?: boolean;
-        'ar-modes'?: string;
-        'camera-controls'?: boolean;
-        'auto-rotate'?: boolean;
-        'ios-src'?: string;
-        onLoad?: () => void;
-        onError?: (error: any) => void;
-      }, HTMLElement>;
-    }
-  }
-}
 
 // Product data (same as in products page)
 const products = [
@@ -68,8 +48,11 @@ function ARViewerContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const modelViewerRef = useRef<any>(null)
-  const [arButtonClicked, setArButtonClicked] = useState(false)
+  const [showModel, setShowModel] = useState(false)
+  const [showInstructions, setShowInstructions] = useState(false)
+  const [zoomLevel, setZoomLevel] = useState(1)
+  const [isAutoRotating, setIsAutoRotating] = useState(true)
+  const modelContainerRef = useRef<HTMLDivElement>(null)
 
   // Find the product based on the ID from the URL
   useEffect(() => {
@@ -87,7 +70,7 @@ function ARViewerContent() {
     // Set a timeout to ensure loading state doesn't get stuck
     const loadingTimeout = setTimeout(() => {
       setIsLoading(false)
-    }, 5000) // 5 seconds max loading time
+    }, 2000) // 2 seconds max loading time
     
     return () => clearTimeout(loadingTimeout)
   }, [params.id])
@@ -95,7 +78,7 @@ function ARViewerContent() {
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      modelViewerRef.current?.requestFullscreen();
+      document.documentElement.requestFullscreen();
       setIsFullscreen(true);
     } else if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -103,69 +86,35 @@ function ARViewerContent() {
     }
   };
 
-  // Handle model loading
-  const handleModelLoad = () => {
-    console.log('Model loaded successfully');
-    setIsLoading(false);
+  // Handle model button click
+  const handleModelButtonClick = () => {
+    setShowModel(true);
   };
 
-  // Handle model error
-  const handleModelError = (error: any) => {
-    console.error('Error loading model:', error);
-    setError('Model yüklənərkən xəta baş verdi');
-    setIsLoading(false);
+  // Handle instructions button click
+  const handleInstructionsButtonClick = () => {
+    setShowInstructions(true);
   };
 
-  // Handle AR button click
-  const handleArButtonClick = () => {
-    console.log('AR button clicked');
-    setArButtonClicked(true);
-    
-    // Force loading state to false to ensure UI is visible
-    setIsLoading(false);
-    
-    // Request camera permissions explicitly
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        console.log('Camera permission granted');
-        // Stop the stream immediately - we just needed permission
-        stream.getTracks().forEach(track => track.stop());
-        
-        // Try to activate AR
-        if (modelViewerRef.current) {
-          try {
-            // Try to activate AR directly
-            if (modelViewerRef.current.canActivateAR) {
-              console.log('Activating AR directly');
-              modelViewerRef.current.activateAR();
-            } else {
-              console.log('AR not available directly, trying alternative method');
-              // Try to find the AR button in the shadow DOM and click it
-              const arButton = modelViewerRef.current.shadowRoot?.querySelector('button[slot="ar-button"]');
-              if (arButton) {
-                console.log('Found AR button in shadow DOM, clicking it');
-                (arButton as HTMLElement).click();
-              } else {
-                console.log('AR button not found in shadow DOM');
-                alert('AR aktivləşdirilə bilmədi. Zəhmət olmasa başqa bir cəhd edin.');
-              }
-            }
-          } catch (err) {
-            console.error('Error activating AR:', err);
-            alert('AR aktivləşdirilə bilmədi. Zəhmət olmasa başqa bir cəhd edin.');
-          }
-        }
-      })
-      .catch(err => {
-        console.error('Camera permission denied:', err);
-        alert('Kamera icazəsi verilmədi. AR funksiyası üçün kamera icazəsi lazımdır.');
-      });
+  // Handle zoom in
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.1, 2));
+  };
+
+  // Handle zoom out
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
+  };
+
+  // Handle auto rotate toggle
+  const handleAutoRotateToggle = () => {
+    setIsAutoRotating(prev => !prev);
   };
 
   if (isLoading) {
     return (
       <div className="container py-16 text-center">
-        <h1 className="text-3xl font-bold mb-4">AR yüklənir...</h1>
+        <h1 className="text-3xl font-bold mb-4">Yüklənir...</h1>
         <p className="mb-8">Zəhmət olmasa gözləyin.</p>
         <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden mx-auto">
           <div 
@@ -191,20 +140,15 @@ function ARViewerContent() {
   return (
     <>
       <Head>
-        <title>AR Viewer</title>
+        <title>3D Viewer</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Head>
       
-      <Script 
-        src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" 
-        strategy="beforeInteractive"
-      />
-      
       <div className="fixed top-4 left-4 z-10">
         <Button asChild variant="outline" className="bg-white/80 backdrop-blur-sm">
-          <Link href={`/ar/${product.id}`}>
+          <Link href="/products">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Geri qayıt
           </Link>
@@ -229,83 +173,146 @@ function ARViewerContent() {
         </div>
       </div>
       
-      <div className="fixed inset-0 z-0">
-        <model-viewer
-          ref={modelViewerRef}
-          src={product.modelUrl}
-          alt={product.name}
-          ar
-          ar-modes="webxr scene-viewer quick-look"
-          camera-controls
-          auto-rotate
-          interaction-prompt="auto"
-          interaction-prompt-style="basic"
-          interaction-prompt-threshold="0"
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: '#ecf0f3',
-            borderRadius: '15px',
-          }}
-          onLoad={handleModelLoad}
-          onError={handleModelError}
-        >
-          <button slot="ar-button" className="arbutton">
-            AR-da bax
-          </button>
-        </model-viewer>
-      </div>
-      
-      <div className="fixed bottom-4 left-0 right-0 text-center z-10">
-        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg inline-block">
-          <Button 
-            className="mb-4 bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={handleArButtonClick}
-          >
-            AR-da bax
-          </Button>
+      <div className="fixed inset-0 z-0 flex items-center justify-center">
+        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold mb-4">{product.name}</h2>
+          <img 
+            src={product.image} 
+            alt={product.name} 
+            className="w-full h-64 object-contain mb-6"
+          />
+          <p className="text-gray-700 mb-4">{product.description}</p>
+          <p className="text-xl font-semibold mb-6">{product.price.toFixed(2)} ₼</p>
           
-          <p className="mb-2">AR-da məhsulu görmək üçün ekranı boş bir səthə yönləndirin və toxunun</p>
-          <div className="text-sm text-gray-600 mb-2">
-            <p>3D modeli idarə etmək üçün:</p>
-            <ul className="list-disc list-inside">
-              <li>Fırlatmaq üçün: Sürüşdürün</li>
-              <li>Yaxınlaşdırmaq üçün: İki barmaqla sıxın</li>
-              <li>Avtomatik fırlatma üçün: Yuxarıdakı düyməni istifadə edin</li>
-            </ul>
-          </div>
-          <div className="text-sm text-blue-600 font-medium mb-2">
-            <p>AR rejimində məhsulu yerləşdirmək üçün:</p>
-            <ol className="list-decimal list-inside">
-              <li>"AR-da bax" düyməsinə toxunun</li>
-              <li>Kameranı boş bir səthə yönləndirin</li>
-              <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
-              <li>Məhsulu hərəkət etdirmək üçün onu sürüşdürün</li>
-            </ol>
+          <div className="flex flex-col gap-4">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleModelButtonClick}
+            >
+              3D modeli gör
+            </Button>
+            
+            <Button 
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleInstructionsButtonClick}
+            >
+              İstifadə təlimatları
+            </Button>
           </div>
         </div>
       </div>
       
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">AR yüklənir...</h2>
-            <p className="mb-4">Zəhmət olmasa gözləyin.</p>
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-500 transition-all duration-300" 
-                style={{ width: '50%' }}
-              ></div>
+      {showModel && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full h-full max-w-4xl flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">{product.name} - 3D Model</h2>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowModel(false)}
+              >
+                Bağla
+              </Button>
             </div>
-            <Button 
-              className="mt-4 w-full"
-              onClick={() => setIsLoading(false)}
+            
+            <div 
+              ref={modelContainerRef}
+              className="flex-1 bg-gray-100 rounded-lg overflow-hidden relative"
+              style={{ 
+                transform: `scale(${zoomLevel})`,
+                transition: 'transform 0.3s ease',
+                transformOrigin: 'center center'
+              }}
             >
-              Yükləməni ləğv et
+              <img 
+                src={product.image} 
+                alt={product.name} 
+                className="w-full h-full object-contain"
+                style={{ 
+                  animation: isAutoRotating ? 'rotate 20s linear infinite' : 'none'
+                }}
+              />
+              
+              <div className="absolute bottom-4 right-4 flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="bg-white/80 backdrop-blur-sm"
+                  onClick={handleZoomOut}
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="bg-white/80 backdrop-blur-sm"
+                  onClick={handleZoomIn}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className={`bg-white/80 backdrop-blur-sm ${isAutoRotating ? 'bg-blue-100' : ''}`}
+                  onClick={handleAutoRotateToggle}
+                >
+                  <RotateCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="mt-4 text-sm text-gray-500">
+              <p>3D modeli idarə etmək üçün:</p>
+              <ul className="list-disc list-inside">
+                <li>Yaxınlaşdırmaq üçün: Yuxarıdakı düymələri istifadə edin</li>
+                <li>Avtomatik fırlatma üçün: Fırlatma düyməsini istifadə edin</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showInstructions && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">İstifadə təlimatları</h2>
+            
+            <div className="mb-6">
+              <p className="mb-2 font-medium">3D modeli görmək üçün:</p>
+              <ol className="list-decimal list-inside text-left mb-4">
+                <li>"3D modeli gör" düyməsinə toxunun</li>
+                <li>Modeli yaxınlaşdırmaq üçün yuxarıdakı düymələri istifadə edin</li>
+                <li>Modeli fırlatmaq üçün fırlatma düyməsini istifadə edin</li>
+              </ol>
+              
+              <p className="mb-2 font-medium">Mobil cihazda görmək üçün:</p>
+              <ol className="list-decimal list-inside text-left">
+                <li>Mobil cihazınızda brauzeri açın</li>
+                <li>Bu səhifəni açın</li>
+                <li>"3D modeli gör" düyməsinə toxunun</li>
+              </ol>
+            </div>
+            
+            <Button 
+              className="w-full"
+              onClick={() => setShowInstructions(false)}
+            >
+              Bağla
             </Button>
           </div>
         </div>
       )}
+      
+      <style jsx global>{`
+        @keyframes rotate {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </>
   )
 }
