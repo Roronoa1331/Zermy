@@ -14,7 +14,7 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    modelUrl: "/models/products/models/base_basic_shaded.gltf", // Replace with actual 3D model URL
+    modelUrl: "/models/products/base_basic_shaded.gltf", // Replace with actual 3D model URL
   },
   {
     id: 2,
