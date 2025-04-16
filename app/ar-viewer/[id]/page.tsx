@@ -144,6 +144,12 @@ function ARViewerContent() {
     try {
       console.log('Initializing Three.js...')
       
+      if (!canvasRef.current) {
+        console.error('Canvas element not found');
+        setError('Canvas elementi tapılmadı');
+        return;
+      }
+      
       // Create scene
       const scene = new THREE.Scene()
       sceneRef.current = scene
@@ -153,16 +159,21 @@ function ARViewerContent() {
       camera.position.z = 5
       cameraRef.current = camera
       
-      // Create renderer
+      // Create renderer with explicit canvas
       const renderer = new THREE.WebGLRenderer({ 
-        canvas: canvasRef.current as HTMLCanvasElement,
+        canvas: canvasRef.current,
         antialias: true,
-        alpha: true
+        alpha: true,
+        powerPreference: 'high-performance'
       })
+      
+      // Set renderer properties
       renderer.setSize(window.innerWidth, window.innerHeight)
       renderer.setPixelRatio(window.devicePixelRatio)
       renderer.xr.enabled = true
       rendererRef.current = renderer
+      
+      console.log('Renderer initialized successfully');
       
       // Add orbit controls
       const controls = new OrbitControls(camera, renderer.domElement)
@@ -225,7 +236,8 @@ function ARViewerContent() {
       }
     } catch (error) {
       console.error('Error initializing Three.js:', error)
-      setError('Three.js başladıla bilmədi')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError('Three.js başladıla bilmədi: ' + errorMessage)
     }
   }
 
@@ -518,15 +530,25 @@ function ARViewerContent() {
 
     checkARSupport()
     
-    // Initialize Three.js immediately
-    if (canvasRef.current) {
-      initThreeJS()
-      
-      // Load the model immediately after initialization
-      if (foundProduct) {
-        loadModel()
+    // Initialize Three.js with a slight delay to ensure DOM is ready
+    const initTimer = setTimeout(() => {
+      if (canvasRef.current) {
+        console.log('Canvas element found, initializing Three.js');
+        initThreeJS()
+        
+        // Load the model immediately after initialization
+        if (foundProduct) {
+          loadModel()
+        }
+      } else {
+        console.error('Canvas element not found after delay');
+        setError('Canvas elementi tapılmadı');
       }
-    }
+    }, 100);
+    
+    return () => {
+      clearTimeout(initTimer);
+    };
   }, [params.id])
 
   if (isLoading) {
