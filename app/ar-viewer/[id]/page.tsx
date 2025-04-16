@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Script from "next/script"
 import Head from "next/head"
-// Import Three.js directly from CDN
+// Import Three.js directly from node_modules
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -81,9 +81,6 @@ function ARViewerContent() {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [threeJsInitialized, setThreeJsInitialized] = useState(false)
   const [autoRotate, setAutoRotate] = useState(false)
-  const [threeJsLoaded, setThreeJsLoaded] = useState(false)
-  const [gltfLoaderLoaded, setGltfLoaderLoaded] = useState(false)
-  const [orbitControlsLoaded, setOrbitControlsLoaded] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -92,6 +89,268 @@ function ARViewerContent() {
   const controlsRef = useRef<OrbitControls | null>(null)
   const controllerRef = useRef<any>(null)
   const sessionRef = useRef<XRSession | null>(null)
+
+  // Initialize Three.js
+  const initThreeJS = async () => {
+    try {
+      console.log('Initializing Three.js...')
+      // Create scene
+      const scene = new THREE.Scene()
+      sceneRef.current = scene
+      console.log('Scene created')
+      
+      // Create camera
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+      camera.position.z = 5 // Position the camera to see the model
+      cameraRef.current = camera
+      console.log('Camera created')
+      
+      // Create renderer
+      console.log('Creating renderer with canvas:', canvasRef.current)
+      const renderer = new THREE.WebGLRenderer({ 
+        canvas: canvasRef.current as HTMLCanvasElement,
+        antialias: true,
+        alpha: true
+      })
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      renderer.setPixelRatio(window.devicePixelRatio)
+      renderer.xr.enabled = true
+      rendererRef.current = renderer
+      console.log('Renderer created and configured')
+      
+      // Add orbit controls
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true
+      controls.dampingFactor = 0.05
+      controls.screenSpacePanning = false
+      controls.minDistance = 2
+      controls.maxDistance = 10
+      controls.maxPolarAngle = Math.PI / 2
+      controls.autoRotate = autoRotate
+      controlsRef.current = controls
+      console.log('Orbit controls added')
+      
+      // Add lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+      scene.add(ambientLight)
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+      directionalLight.position.set(0, 1, 1)
+      scene.add(directionalLight)
+      console.log('Lights added to scene')
+      
+      // Load 3D model
+      const loader = new GLTFLoader()
+      console.log('Attempting to load model from:', product.modelUrl)
+      setModelLoading(true)
+      setLoadingProgress(0)
+      
+      // Add a simple cube as a fallback in case the model fails to load
+      const geometry = new THREE.BoxGeometry(1, 1, 1)
+      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+      const cube = new THREE.Mesh(geometry, material)
+      cube.position.set(0, 0, -2)
+      scene.add(cube)
+      console.log('Added fallback cube to scene')
+      
+      loader.load(
+        product.modelUrl,
+        (gltf: { scene: THREE.Object3D }) => {
+          console.log('Model loaded successfully:', product.modelUrl)
+          const model = gltf.scene
+          
+          // Center the model
+          const box = new THREE.Box3().setFromObject(model)
+          const center = box.getCenter(new THREE.Vector3())
+          model.position.sub(center)
+          
+          // Scale the model appropriately
+          const size = box.getSize(new THREE.Vector3())
+          const maxDim = Math.max(size.x, size.y, size.z)
+          const scale = 1 / maxDim
+          model.scale.multiplyScalar(scale)
+          
+          // Position the model in front of the camera
+          model.position.set(0, 0, -1)
+          
+          // Make the model visible
+          model.visible = true
+          
+          scene.add(model)
+          modelRef.current = model
+          console.log('Model added to scene:', model)
+          setModelLoading(false)
+        },
+        (progress) => {
+          const percent = (progress.loaded / progress.total * 100).toFixed(2)
+          console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`)
+          setLoadingProgress(Number(percent))
+        },
+        (error: unknown) => {
+          console.error('Error loading model:', error)
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          console.error('Detailed error:', errorMessage)
+          setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage)
+          setModelLoading(false)
+          
+          // Try to load a fallback model if available
+          if (product.modelUrl !== '/models/products/bag/base_basic_shaded.glb') {
+            console.log('Attempting to load fallback model')
+            setModelLoading(true)
+            setLoadingProgress(0)
+            loader.load(
+              '/models/products/bag/base_basic_shaded.glb',
+              (gltf: { scene: THREE.Object3D }) => {
+                console.log('Fallback model loaded successfully')
+                const model = gltf.scene
+                model.scale.set(0.5, 0.5, 0.5)
+                model.position.set(0, 0, -1)
+                scene.add(model)
+                modelRef.current = model
+                setModelLoading(false)
+              },
+              (progress) => {
+                const percent = (progress.loaded / progress.total * 100).toFixed(2)
+                setLoadingProgress(Number(percent))
+              },
+              (fallbackError: unknown) => {
+                console.error('Error loading fallback model:', fallbackError)
+                setModelLoading(false)
+              }
+            )
+          }
+        }
+      )
+      
+      // Handle window resize
+      const handleResize = () => {
+        if (cameraRef.current && rendererRef.current) {
+          cameraRef.current.aspect = window.innerWidth / window.innerHeight
+          cameraRef.current.updateProjectionMatrix()
+          rendererRef.current.setSize(window.innerWidth, window.innerHeight)
+        }
+      }
+      
+      window.addEventListener('resize', handleResize)
+      
+      // Animation loop
+      const animate = () => {
+        if (controlsRef.current && !sessionRef.current) {
+          controlsRef.current.update()
+        }
+        
+        if (modelRef.current && sessionRef.current) {
+          // In AR mode, make sure the model is visible
+          modelRef.current.visible = true
+        }
+        
+        renderer.render(scene, camera)
+        requestAnimationFrame(animate)
+      }
+      
+      console.log('Starting animation loop')
+      animate()
+      setThreeJsInitialized(true)
+      
+      // Start AR session
+      const startAR = async () => {
+        try {
+          console.log('Starting AR session...')
+          const session = await (navigator as any).xr.requestSession('immersive-ar', {
+            requiredFeatures: ['hit-test'],
+            optionalFeatures: ['dom-overlay'],
+            domOverlay: { root: document.body }
+          })
+          
+          console.log('AR session created:', session)
+          sessionRef.current = session
+          
+          // Set up AR session
+          renderer.xr.setReferenceSpaceType('local')
+          
+          // Create AR button
+          const arButton = document.createElement('button')
+          arButton.textContent = 'AR-da bax'
+          arButton.style.position = 'fixed'
+          arButton.style.bottom = '20px'
+          arButton.style.left = '50%'
+          arButton.style.transform = 'translateX(-50%)'
+          arButton.style.padding = '12px 24px'
+          arButton.style.border = 'none'
+          arButton.style.borderRadius = '4px'
+          arButton.style.backgroundColor = '#0070f3'
+          arButton.style.color = 'white'
+          arButton.style.fontSize = '16px'
+          arButton.style.cursor = 'pointer'
+          arButton.style.zIndex = '1000'
+          
+          arButton.addEventListener('click', async () => {
+            if (sessionRef.current) {
+              await sessionRef.current.end()
+              sessionRef.current = null
+            } else {
+              await startAR()
+            }
+          })
+          
+          document.body.appendChild(arButton)
+          
+          // Set up hit testing
+          const viewerSpace = await session.requestReferenceSpace('viewer')
+          const hitTestSource = await session.requestHitTestSource({ space: viewerSpace })
+          
+          // Handle frame updates
+          session.addEventListener('select', () => {
+            if (modelRef.current) {
+              // Place model at hit test location
+              const hitTestResults = session.renderState.hitTestResults
+              if (hitTestResults.length > 0) {
+                const hit = hitTestResults[0]
+                const pose = hit.getPose(renderer.xr.getReferenceSpace())
+                
+                if (pose) {
+                  modelRef.current.position.set(
+                    pose.transform.position.x,
+                    pose.transform.position.y,
+                    pose.transform.position.z
+                  )
+                  modelRef.current.visible = true
+                }
+              }
+            }
+          })
+          
+          // Clean up when session ends
+          session.addEventListener('end', () => {
+            sessionRef.current = null
+            if (arButton) {
+              document.body.removeChild(arButton)
+            }
+          })
+          
+          // Start the AR session
+          await renderer.xr.setSession(session)
+          console.log('AR session started successfully')
+        } catch (error) {
+          console.error('Error starting AR session:', error)
+          setError('AR sessiyası başladıla bilmədi')
+        }
+      }
+      
+      // Don't automatically start AR session, let the user click the button
+      // startAR()
+      
+      return () => {
+        window.removeEventListener('resize', handleResize)
+        if (sessionRef.current) {
+          sessionRef.current.end()
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing Three.js:', error)
+      setError('Three.js başladıla bilmədi')
+    }
+  }
 
   useEffect(() => {
     // Find the product based on the ID from the URL
@@ -131,292 +390,13 @@ function ARViewerContent() {
     }
 
     checkARSupport()
+    
+    // Initialize Three.js immediately since we're using locally installed Three.js
+    if (canvasRef.current && foundProduct) {
+      console.log('Initializing Three.js immediately...')
+      initThreeJS()
+    }
   }, [params.id])
-
-  useEffect(() => {
-    console.log('AR support state:', arSupported)
-    console.log('Canvas ref:', canvasRef.current)
-    console.log('Product:', product)
-    console.log('Three.js loaded:', threeJsLoaded)
-    console.log('GLTFLoader loaded:', gltfLoaderLoaded)
-    console.log('OrbitControls loaded:', orbitControlsLoaded)
-    
-    if (!arSupported || !canvasRef.current || !product || !threeJsLoaded || !gltfLoaderLoaded || !orbitControlsLoaded) {
-      console.log('Skipping Three.js initialization due to missing requirements')
-      return
-    }
-
-    // Check if Three.js is loaded
-    if (typeof THREE === 'undefined') {
-      console.error('Three.js is not loaded yet')
-      setError('Three.js yüklənmədi. Zəhmət olmasa səhifəni yeniləyin.')
-      return
-    }
-
-    // Initialize Three.js
-    const initThreeJS = async () => {
-      try {
-        console.log('Initializing Three.js...')
-        // Create scene
-        const scene = new THREE.Scene()
-        sceneRef.current = scene
-        console.log('Scene created')
-        
-        // Create camera
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-        camera.position.z = 5 // Position the camera to see the model
-        cameraRef.current = camera
-        console.log('Camera created')
-        
-        // Create renderer
-        console.log('Creating renderer with canvas:', canvasRef.current)
-        const renderer = new THREE.WebGLRenderer({ 
-          canvas: canvasRef.current as HTMLCanvasElement,
-          antialias: true,
-          alpha: true
-        })
-        renderer.setSize(window.innerWidth, window.innerHeight)
-        renderer.setPixelRatio(window.devicePixelRatio)
-        renderer.xr.enabled = true
-        rendererRef.current = renderer
-        console.log('Renderer created and configured')
-        
-        // Add orbit controls
-        const controls = new OrbitControls(camera, renderer.domElement)
-        controls.enableDamping = true
-        controls.dampingFactor = 0.05
-        controls.screenSpacePanning = false
-        controls.minDistance = 2
-        controls.maxDistance = 10
-        controls.maxPolarAngle = Math.PI / 2
-        controls.autoRotate = autoRotate
-        controlsRef.current = controls
-        console.log('Orbit controls added')
-        
-        // Add lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
-        scene.add(ambientLight)
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-        directionalLight.position.set(0, 1, 1)
-        scene.add(directionalLight)
-        console.log('Lights added to scene')
-        
-        // Load 3D model
-        const loader = new GLTFLoader()
-        console.log('Attempting to load model from:', product.modelUrl)
-        setModelLoading(true)
-        setLoadingProgress(0)
-        
-        // Add a simple cube as a fallback in case the model fails to load
-        const geometry = new THREE.BoxGeometry(1, 1, 1)
-        const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
-        const cube = new THREE.Mesh(geometry, material)
-        cube.position.set(0, 0, -2)
-        scene.add(cube)
-        console.log('Added fallback cube to scene')
-        
-        loader.load(
-          product.modelUrl,
-          (gltf: { scene: THREE.Object3D }) => {
-            console.log('Model loaded successfully:', product.modelUrl)
-            const model = gltf.scene
-            
-            // Center the model
-            const box = new THREE.Box3().setFromObject(model)
-            const center = box.getCenter(new THREE.Vector3())
-            model.position.sub(center)
-            
-            // Scale the model appropriately
-            const size = box.getSize(new THREE.Vector3())
-            const maxDim = Math.max(size.x, size.y, size.z)
-            const scale = 1 / maxDim
-            model.scale.multiplyScalar(scale)
-            
-            // Position the model in front of the camera
-            model.position.set(0, 0, -1)
-            
-            // Make the model visible
-            model.visible = true
-            
-            scene.add(model)
-            modelRef.current = model
-            console.log('Model added to scene:', model)
-            setModelLoading(false)
-          },
-          (progress) => {
-            const percent = (progress.loaded / progress.total * 100).toFixed(2)
-            console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`)
-            setLoadingProgress(Number(percent))
-          },
-          (error: unknown) => {
-            console.error('Error loading model:', error)
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-            console.error('Detailed error:', errorMessage)
-            setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage)
-            setModelLoading(false)
-            
-            // Try to load a fallback model if available
-            if (product.modelUrl !== '/models/products/bag/base_basic_shaded.glb') {
-              console.log('Attempting to load fallback model')
-              setModelLoading(true)
-              setLoadingProgress(0)
-              loader.load(
-                '/models/products/bag/base_basic_shaded.glb',
-                (gltf: { scene: THREE.Object3D }) => {
-                  console.log('Fallback model loaded successfully')
-                  const model = gltf.scene
-                  model.scale.set(0.5, 0.5, 0.5)
-                  model.position.set(0, 0, -1)
-                  scene.add(model)
-                  modelRef.current = model
-                  setModelLoading(false)
-                },
-                (progress) => {
-                  const percent = (progress.loaded / progress.total * 100).toFixed(2)
-                  setLoadingProgress(Number(percent))
-                },
-                (fallbackError: unknown) => {
-                  console.error('Error loading fallback model:', fallbackError)
-                  setModelLoading(false)
-                }
-              )
-            }
-          }
-        )
-        
-        // Handle window resize
-        const handleResize = () => {
-          if (cameraRef.current && rendererRef.current) {
-            cameraRef.current.aspect = window.innerWidth / window.innerHeight
-            cameraRef.current.updateProjectionMatrix()
-            rendererRef.current.setSize(window.innerWidth, window.innerHeight)
-          }
-        }
-        
-        window.addEventListener('resize', handleResize)
-        
-        // Animation loop
-        const animate = () => {
-          if (controlsRef.current && !sessionRef.current) {
-            controlsRef.current.update()
-          }
-          
-          if (modelRef.current && sessionRef.current) {
-            // In AR mode, make sure the model is visible
-            modelRef.current.visible = true
-          }
-          
-          renderer.render(scene, camera)
-          requestAnimationFrame(animate)
-        }
-        
-        console.log('Starting animation loop')
-        animate()
-        setThreeJsInitialized(true)
-        
-        // Start AR session
-        const startAR = async () => {
-          try {
-            console.log('Starting AR session...')
-            const session = await (navigator as any).xr.requestSession('immersive-ar', {
-              requiredFeatures: ['hit-test'],
-              optionalFeatures: ['dom-overlay'],
-              domOverlay: { root: document.body }
-            })
-            
-            console.log('AR session created:', session)
-            sessionRef.current = session
-            
-            // Set up AR session
-            renderer.xr.setReferenceSpaceType('local')
-            
-            // Create AR button
-            const arButton = document.createElement('button')
-            arButton.textContent = 'AR-da bax'
-            arButton.style.position = 'fixed'
-            arButton.style.bottom = '20px'
-            arButton.style.left = '50%'
-            arButton.style.transform = 'translateX(-50%)'
-            arButton.style.padding = '12px 24px'
-            arButton.style.border = 'none'
-            arButton.style.borderRadius = '4px'
-            arButton.style.backgroundColor = '#0070f3'
-            arButton.style.color = 'white'
-            arButton.style.fontSize = '16px'
-            arButton.style.cursor = 'pointer'
-            arButton.style.zIndex = '1000'
-            
-            arButton.addEventListener('click', async () => {
-              if (sessionRef.current) {
-                await sessionRef.current.end()
-                sessionRef.current = null
-              } else {
-                await startAR()
-              }
-            })
-            
-            document.body.appendChild(arButton)
-            
-            // Set up hit testing
-            const viewerSpace = await session.requestReferenceSpace('viewer')
-            const hitTestSource = await session.requestHitTestSource({ space: viewerSpace })
-            
-            // Handle frame updates
-            session.addEventListener('select', () => {
-              if (modelRef.current) {
-                // Place model at hit test location
-                const hitTestResults = session.renderState.hitTestResults
-                if (hitTestResults.length > 0) {
-                  const hit = hitTestResults[0]
-                  const pose = hit.getPose(renderer.xr.getReferenceSpace())
-                  
-                  if (pose) {
-                    modelRef.current.position.set(
-                      pose.transform.position.x,
-                      pose.transform.position.y,
-                      pose.transform.position.z
-                    )
-                    modelRef.current.visible = true
-                  }
-                }
-              }
-            })
-            
-            // Clean up when session ends
-            session.addEventListener('end', () => {
-              sessionRef.current = null
-              if (arButton) {
-                document.body.removeChild(arButton)
-              }
-            })
-            
-            // Start the AR session
-            await renderer.xr.setSession(session)
-            console.log('AR session started successfully')
-          } catch (error) {
-            console.error('Error starting AR session:', error)
-            setError('AR sessiyası başladıla bilmədi')
-          }
-        }
-        
-        // Don't automatically start AR session, let the user click the button
-        // startAR()
-        
-        return () => {
-          window.removeEventListener('resize', handleResize)
-          if (sessionRef.current) {
-            sessionRef.current.end()
-          }
-        }
-      } catch (error) {
-        console.error('Error initializing Three.js:', error)
-        setError('Three.js başladıla bilmədi')
-      }
-    }
-    
-    initThreeJS()
-  }, [arSupported, product, threeJsLoaded, gltfLoaderLoaded, orbitControlsLoaded])
 
   if (isLoading) {
     return (
@@ -460,52 +440,7 @@ function ARViewerContent() {
     <>
       <Head>
         <title>AR Viewer</title>
-        <link 
-          rel="preload" 
-          href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" 
-          as="script" 
-        />
-        <link 
-          rel="preload" 
-          href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js" 
-          as="script" 
-        />
-        <link 
-          rel="preload" 
-          href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js" 
-          as="script" 
-        />
       </Head>
-      <Script 
-        src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" 
-        strategy="beforeInteractive" 
-        onLoad={() => {
-          console.log('Three.js loaded successfully')
-          setThreeJsLoaded(true)
-        }}
-        onError={(e) => {
-          console.error('Error loading Three.js:', e)
-          setError('Three.js yüklənmədi. Zəhmət olmasa səhifəni yeniləyin.')
-        }}
-      />
-      
-      <Script 
-        src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js" 
-        strategy="afterInteractive"
-        onLoad={() => {
-          console.log('GLTFLoader loaded successfully')
-          setGltfLoaderLoaded(true)
-        }}
-      />
-      
-      <Script 
-        src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js" 
-        strategy="afterInteractive"
-        onLoad={() => {
-          console.log('OrbitControls loaded successfully')
-          setOrbitControlsLoaded(true)
-        }}
-      />
       
       <div className="fixed top-4 left-4 z-10">
         <Button asChild variant="outline" className="bg-white/80 backdrop-blur-sm">
@@ -566,34 +501,6 @@ function ARViewerContent() {
               style={{ width: '70%' }}
             ></div>
           </div>
-        </div>
-      )}
-      
-      {!threeJsLoaded && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
-          <p className="mb-2">Three.js yüklənir...</p>
-          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-blue-500 transition-all duration-300" 
-              style={{ width: '50%' }}
-            ></div>
-          </div>
-        </div>
-      )}
-      
-      {threeJsLoaded && (!gltfLoaderLoaded || !orbitControlsLoaded) && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
-          <p className="mb-2">3D komponentlər yüklənir...</p>
-          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-blue-500 transition-all duration-300" 
-              style={{ width: gltfLoaderLoaded && orbitControlsLoaded ? '100%' : '70%' }}
-            ></div>
-          </div>
-          <p className="mt-2 text-sm">
-            {!gltfLoaderLoaded && 'GLTFLoader yüklənir... '}
-            {!orbitControlsLoaded && 'OrbitControls yüklənir...'}
-          </p>
         </div>
       )}
       
