@@ -51,7 +51,7 @@ const preloadModels = () => {
   });
   
   // Preload fallback model
-  const fallbackModelUrl = "https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb";
+  const fallbackModelUrl = "/models/products/bag/bag.glb";
   if (!modelCache[fallbackModelUrl]) {
     console.log(`Preloading fallback model: ${fallbackModelUrl}`);
     loader.load(
@@ -93,8 +93,8 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    // Using the CDN model file
-    modelUrl: "https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb",
+    // Using the local bag.glb file
+    modelUrl: "/models/products/bag/bag.glb",
   },
   {
     id: 2,
@@ -128,7 +128,7 @@ function ARViewerContent() {
   const [arSupported, setArSupported] = useState<boolean | null>(null)
   const [modelLoading, setModelLoading] = useState(false)
   const [loadingProgress, setLoadingProgress] = useState(0)
-  const [threeJsInitialized, setThreeJsInitialized] = useState(false)
+  const [threeJsInitialized, setThreeJsInitialized] = useState(true)
   const [autoRotate, setAutoRotate] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -143,9 +143,6 @@ function ARViewerContent() {
   const initThreeJS = async () => {
     try {
       console.log('Initializing Three.js...')
-      
-      // Set Three.js as initialized immediately to hide the loading indicator
-      setThreeJsInitialized(true)
       
       // Create scene
       const scene = new THREE.Scene()
@@ -334,15 +331,15 @@ function ARViewerContent() {
             setModelLoading(false);
             
             // Try to load a fallback model if available
-            if (product.modelUrl !== 'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb') {
+            if (product.modelUrl !== '/models/products/bag/bag.glb') {
               console.log('Attempting to load fallback model');
               setModelLoading(true);
               setLoadingProgress(0);
               
               // Check if fallback model is in cache
-              if (modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb']) {
+              if (modelCache['/models/products/bag/bag.glb']) {
                 console.log('Fallback model found in cache, using cached version');
-                const cachedModel = modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'].clone();
+                const cachedModel = modelCache['/models/products/bag/bag.glb'].clone();
                 cachedModel.scale.set(0.5, 0.5, 0.5);
                 cachedModel.position.set(0, 0, -1);
                 
@@ -360,7 +357,7 @@ function ARViewerContent() {
                 setModelLoading(false);
               } else {
                 loader.load(
-                  'https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb',
+                  '/models/products/bag/bag.glb',
                   (gltf: { scene: THREE.Object3D }) => {
                     console.log('Fallback model loaded successfully');
                     const model = gltf.scene;
@@ -374,7 +371,7 @@ function ARViewerContent() {
                     }
                     
                     // Add to cache
-                    modelCache['https://cdn.jsdelivr.net/gh/Roronoa1331/3DModel@main/base_basic_shaded.glb'] = model.clone();
+                    modelCache['/models/products/bag/bag.glb'] = model.clone();
                     
                     if (sceneRef.current) {
                       sceneRef.current.add(model);
@@ -593,18 +590,6 @@ function ARViewerContent() {
       <div className="fixed inset-0 z-0">
         <canvas ref={canvasRef} className="w-full h-full" />
       </div>
-      
-      {!threeJsInitialized && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
-          <p className="mb-2">3D görünüş hazırlanır...</p>
-          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-blue-500 transition-all duration-300" 
-              style={{ width: '70%' }}
-            ></div>
-          </div>
-        </div>
-      )}
       
       {modelLoading && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
