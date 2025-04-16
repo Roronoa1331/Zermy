@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Script from "next/script"
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 // Define WebXR types
 declare global {
@@ -41,8 +41,8 @@ const products = [
     price: 50.00,
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-    // Add your model file to: public/models/products/bag/model.gltf
-    modelUrl: "/models/products/models/base_basic_shaded.gltf",
+    // Using the existing base_basic_shaded.gltf file
+    modelUrl: "/models/products/base_basic_shaded.gltf",
   },
   {
     id: 2,
@@ -50,8 +50,8 @@ const products = [
     price: 300.00,
     image: "https://m.media-amazon.com/images/S/al-na-9d5791cf-3faf/cde13f96-75ba-4b9f-87c5-1257b41cbfef._SL480_.jpg",
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
-    // Add your model file to: public/models/products/carpet/model.gltf
-    modelUrl: "/models/products/carpet/model.gltf",
+    // Using the existing base_basic_shaded.gltf file
+    modelUrl: "/models/products/base_basic_shaded.gltf",
   },
   // To add a new product:
   // 1. Create a new directory under public/models/products/
@@ -74,6 +74,8 @@ function ARViewerContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [arSupported, setArSupported] = useState<boolean | null>(null)
+  const [modelLoading, setModelLoading] = useState(false)
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -131,7 +133,7 @@ function ARViewerContent() {
         
         // Create renderer
         const renderer = new THREE.WebGLRenderer({ 
-          canvas: canvasRef.current,
+          canvas: canvasRef.current as HTMLCanvasElement,
           antialias: true,
           alpha: true
         })
@@ -150,19 +152,60 @@ function ARViewerContent() {
         
         // Load 3D model
         const loader = new GLTFLoader()
+        console.log('Attempting to load model from:', product.modelUrl)
+        setModelLoading(true)
+        setLoadingProgress(0)
+        
         loader.load(
           product.modelUrl,
           (gltf: { scene: THREE.Object3D }) => {
+            console.log('Model loaded successfully:', product.modelUrl)
             const model = gltf.scene
             model.scale.set(0.5, 0.5, 0.5)
             model.position.set(0, 0, -1)
             scene.add(model)
             modelRef.current = model
+            console.log('Model added to scene:', model)
+            setModelLoading(false)
           },
-          undefined,
-          (error: Error) => {
+          (progress) => {
+            const percent = (progress.loaded / progress.total * 100).toFixed(2)
+            console.log(`Loading progress: ${percent}% (${progress.loaded}/${progress.total} bytes)`)
+            setLoadingProgress(Number(percent))
+          },
+          (error: unknown) => {
             console.error('Error loading model:', error)
-            setError('3D model yüklənərkən xəta baş verdi')
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            console.error('Detailed error:', errorMessage)
+            setError('3D model yüklənərkən xəta baş verdi: ' + errorMessage)
+            setModelLoading(false)
+            
+            // Try to load a fallback model if available
+            if (product.modelUrl !== '/models/products/base_basic_shaded.gltf') {
+              console.log('Attempting to load fallback model')
+              setModelLoading(true)
+              setLoadingProgress(0)
+              loader.load(
+                '/models/products/base_basic_shaded.gltf',
+                (gltf: { scene: THREE.Object3D }) => {
+                  console.log('Fallback model loaded successfully')
+                  const model = gltf.scene
+                  model.scale.set(0.5, 0.5, 0.5)
+                  model.position.set(0, 0, -1)
+                  scene.add(model)
+                  modelRef.current = model
+                  setModelLoading(false)
+                },
+                (progress) => {
+                  const percent = (progress.loaded / progress.total * 100).toFixed(2)
+                  setLoadingProgress(Number(percent))
+                },
+                (fallbackError: unknown) => {
+                  console.error('Error loading fallback model:', fallbackError)
+                  setModelLoading(false)
+                }
+              )
+            }
           }
         )
         
@@ -337,6 +380,19 @@ function ARViewerContent() {
       <div className="fixed inset-0 z-0">
         <canvas ref={canvasRef} className="w-full h-full" />
       </div>
+      
+      {modelLoading && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20 text-center">
+          <p className="mb-2">3D model yüklənir...</p>
+          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-300" 
+              style={{ width: `${loadingProgress}%` }}
+            ></div>
+          </div>
+          <p className="mt-2 text-sm">{loadingProgress.toFixed(0)}%</p>
+        </div>
+      )}
       
       <div className="fixed bottom-4 left-0 right-0 text-center z-10">
         <p className="bg-white/80 backdrop-blur-sm p-2 rounded-lg inline-block">
