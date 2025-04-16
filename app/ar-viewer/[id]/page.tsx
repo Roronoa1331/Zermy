@@ -129,6 +129,46 @@ function ARViewerContent() {
   const handleModelLoad = () => {
     console.log('Model loaded successfully');
     setIsLoading(false);
+    
+    // Add event listener to the model-viewer element to handle AR button clicks
+    if (modelViewerRef.current) {
+      const modelViewer = modelViewerRef.current;
+      
+      // Add a custom event listener for AR button clicks
+      modelViewer.addEventListener('ar-status', (event: any) => {
+        console.log('AR status changed:', event.detail.status);
+        
+        if (event.detail.status === 'session-started') {
+          console.log('AR session started successfully');
+          // Hide UI elements when AR is active
+          document.querySelectorAll('.fixed').forEach(el => {
+            (el as HTMLElement).style.display = 'none';
+          });
+        } else if (event.detail.status === 'session-ended') {
+          console.log('AR session ended');
+          // Show UI elements when AR is inactive
+          document.querySelectorAll('.fixed').forEach(el => {
+            (el as HTMLElement).style.display = '';
+          });
+        }
+      });
+      
+      // Add a custom event listener for AR button clicks
+      modelViewer.addEventListener('ar-button-click', () => {
+        console.log('AR button clicked');
+        // Request camera permissions explicitly
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            console.log('Camera permission granted');
+            // Stop the stream immediately - we just needed permission
+            stream.getTracks().forEach(track => track.stop());
+          })
+          .catch(err => {
+            console.error('Camera permission denied:', err);
+            alert('Kamera icazəsi verilmədi. AR funksiyası üçün kamera icazəsi lazımdır.');
+          });
+      });
+    }
   };
 
   // Handle model error
@@ -168,6 +208,9 @@ function ARViewerContent() {
     <>
       <Head>
         <title>AR Viewer</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Head>
       
       <Script 
@@ -211,6 +254,9 @@ function ARViewerContent() {
           ar-modes="webxr scene-viewer quick-look"
           camera-controls
           auto-rotate
+          interaction-prompt="auto"
+          interaction-prompt-style="basic"
+          interaction-prompt-threshold="0"
           style={{
             width: '100%',
             height: '100%',
