@@ -15,6 +15,12 @@ const products = [
     image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
   },
   {
+    id: 6,
+    name: "Şam",
+    price: 7.00,
+    image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
+  },
+  {
     id: 2,
     name: "Xalça",
     price: 300.00,
@@ -37,12 +43,6 @@ const products = [
     name: "Ayaqqabı 🟢",
     price: 120.00,
     image: "https://static.fibre2fashion.com/newsresource/images/249/tea_261031.jpg",
-  },
-  {
-    id: 6,
-    name: "Şam",
-    price: 7.00,
-    image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
   },
   {
     id: 7,

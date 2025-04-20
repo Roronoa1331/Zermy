@@ -106,7 +106,7 @@ function ARContent() {
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">AR-da bax</h2>
+        {/* <h2 className="text-2xl font-bold mb-4">AR-da bax</h2> */}
         <p className="mb-6">
           Məhsulu AR-da görmək üçün aşağıdakı düyməyə klikləyin və kameranızı istifadə edin.
         </p>

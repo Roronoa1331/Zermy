@@ -18,6 +18,17 @@ const products = [
     description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
     // Using the local bag.glb file
     modelUrl: "/models/products/bag/bag.glb",
+    hasAR: true, // This product has AR functionality
+  },
+  {
+    id: 3,
+    name: "Şam",
+    price: 75.00,
+    image: "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    description: "Təbii materiallardan hazırlanmış, uzun yanma müddəti olan şam. Evinizə rahatlıq və istilik gətirir.",
+    // Using the new model file
+    modelUrl: "/models/products/candle/candle.glb",
+    hasAR: true, // This product has AR functionality
   },
   {
     id: 2,
@@ -27,6 +38,7 @@ const products = [
     description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
     // Using the existing model file
     modelUrl: "/models/products/carpet/model.gltf",
+    hasAR: false, // This product doesn't have AR functionality
   },
   // To add a new product:
   // 1. Create a new directory under public/models/products/
@@ -34,12 +46,13 @@ const products = [
   // 3. Add a new product object here with the modelUrl pointing to your model
   // Example:
   // {
-  //   id: 3,
+  //   id: 4,
   //   name: "New Product",
   //   price: 100.00,
   //   image: "path/to/image.jpg",
   //   description: "Product description",
   //   modelUrl: "/models/products/new-product/model.gltf",
+  //   hasAR: false, // Set to true if this product should have AR functionality
   // },
 ]
 
@@ -96,7 +109,7 @@ function ARViewerContent() {
     setIsMobile(isMobileDevice);
     
     return () => clearTimeout(loadingTimeout)
-  }, [params.id])
+  }, [params.id]) 
 
   // Handle model button click
   const handleModelButtonClick = () => {
@@ -184,12 +197,14 @@ function ARViewerContent() {
               3D modeli gör
             </Button>
             
-            <Button 
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={handleARButtonClick}
-            >
-              AR-da bax
-            </Button>
+            {product.hasAR && (
+              <Button 
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleARButtonClick}
+              >
+                AR-da bax
+              </Button>
+            )}
             
             <Button 
               className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -199,7 +214,7 @@ function ARViewerContent() {
             </Button>
           </div>
           
-          {isMobile && (
+          {isMobile && product.hasAR && (
             <p className="mt-4 text-sm text-blue-500">
               Mobil cihazda AR istifadə etmək üçün brauzerinizə kamera icazəsi verməlisiniz.
             </p>
@@ -243,7 +258,7 @@ function ARViewerContent() {
         </div>
       )}
       
-      {showAR && (
+      {showAR && product.hasAR && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
           <div className="bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center">
             <h2 className="text-xl font-bold">{product.name} - AR</h2>
@@ -284,21 +299,32 @@ function ARViewerContent() {
                 <li>Modeli fırlatmaq üçün ekrana toxunub sürüşdürün</li>
               </ol>
               
-              <p className="mb-2 font-medium">AR-da görmək üçün:</p>
-              <ol className="list-decimal list-inside text-left mb-4">
-                <li>"AR-da bax" düyməsinə toxunun</li>
-                <li>Brauzer kamera icazəsi istəsə, "İcazə ver" düyməsinə toxunun</li>
-                <li>Kameranı boş bir səthə yönləndirin</li>
-                <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
-                <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
-              </ol>
+              {product.hasAR && (
+                <>
+                  <p className="mb-2 font-medium">AR-da görmək üçün:</p>
+                  <ol className="list-decimal list-inside text-left mb-4">
+                    <li>"AR-da bax" düyməsinə toxunun</li>
+                    <li>Brauzer kamera icazəsi istəsə, "İcazə ver" düyməsinə toxunun</li>
+                    <li>Kameranı boş bir səthə yönləndirin</li>
+                    <li>Ekrana toxunun - məhsul səthə yerləşdiriləcək</li>
+                    <li>Məhsulu ətrafında fırlatmaq üçün ekrana toxunub sürüşdürün</li>
+                  </ol>
+                </>
+              )}
               
               <p className="mb-2 font-medium">Mobil cihazda görmək üçün:</p>
               <ol className="list-decimal list-inside text-left">
                 <li>Mobil cihazınızda brauzeri açın</li>
                 <li>Bu səhifəni açın</li>
-                <li>"AR-da bax" düyməsinə toxunun</li>
-                <li>Brauzer kamera icazəsi istəsə, "İcazə ver" düyməsinə toxunun</li>
+                {product.hasAR && (
+                  <li>"AR-da bax" düyməsinə toxunun</li>
+                )}
+                {product.hasAR && (
+                  <li>Brauzer kamera icazəsi istəsə, "İcazə ver" düyməsinə toxunun</li>
+                )}
+                {!product.hasAR && (
+                  <li>"3D modeli gör" düyməsinə toxunun</li>
+                )}
               </ol>
             </div>
             

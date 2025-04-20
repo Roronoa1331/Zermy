@@ -11,6 +11,12 @@ const products = [
 
   },
   {
+    id: 6,
+    name: "Şam",
+    price: "₼7.00",
+    image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
+  },
+  {
     id: 2,
     name: "Xalça",
     price: "₼300.00",
@@ -35,26 +41,17 @@ const products = [
     image: "https://static.fibre2fashion.com/newsresource/images/249/tea_261031.jpg",
   },
   {
-    id: 6,
-    name: "Şam",
-    price: "₼7.00",
-    image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
-  }
-  ,
-  {
     id: 7,
     name: "Şampun",
     price: "₼34.00",
     image: "https://m.media-amazon.com/images/I/61Jcsp2JWOL.jpg",
-  }
-  ,
+  },
   {
     id: 8,
     name: "Çanta",
     price: "₼15.00",
     image: "https://lie-studio.dk/cdn/shop/files/Canvas_tote_1.jpg?v=1731332002&width=1946",
-  }
-  ,
+  },
   {
     id: 9,
     name: "Tumbler",

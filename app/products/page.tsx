@@ -22,6 +22,19 @@ const products = [
     ]
   },
   {
+    id: 6,
+    name: "Şam",
+    price: 7.00,
+    image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
+    description: "Təbii bal mumundan hazırlanmış, ətraf mühitə zərərsiz şam. Evinizə rahatlıq gətirir.",
+    features: [
+      "Təbii bal mumu",
+      "Uzun yanma müddəti",
+      "Ətraf mühitə zərərsiz",
+      "Xoş qoxu"
+    ]
+  },
+  {
     id: 2,
     name: "Xalça",
     price: 300.00,
@@ -71,19 +84,6 @@ const products = [
       "Rahat və davamlı",
       "Müxtəlif ölçülər",
       "Yüksək keyfiyyət"
-    ]
-  },
-  {
-    id: 6,
-    name: "Şam",
-    price: 7.00,
-    image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
-    description: "Təbii bal mumundan hazırlanmış, ətraf mühitə zərərsiz şam. Evinizə rahatlıq gətirir.",
-    features: [
-      "Təbii bal mumu",
-      "Uzun yanma müddəti",
-      "Ətraf mühitə zərərsiz",
-      "Xoş qoxu"
     ]
   },
   {
