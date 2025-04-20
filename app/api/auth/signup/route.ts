@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
+import { hash } from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { sign } from 'jsonwebtoken';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +13,7 @@ export async function POST(request: Request) {
     // Validate input
     if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Bütün sahələri doldurun' },
+        { error: 'Bütün sahələr tələb olunur' },
         { status: 400 }
       );
     }
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
     }
     
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hash(password, 12);
     
     // Create user
     const user = await prisma.user.create({
@@ -59,13 +61,17 @@ export async function POST(request: Request) {
     const { password: _, ...userWithoutPassword } = user;
     
     return NextResponse.json({
-      user: userWithoutPassword,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      },
       message: 'Hesabınız uğurla yaradıldı!'
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Error in /api/auth/signup:', error);
     return NextResponse.json(
-      { error: 'Qeydiyyat zamanı xəta baş verdi' },
+      { error: 'Server xətası' },
       { status: 500 }
     );
   }
