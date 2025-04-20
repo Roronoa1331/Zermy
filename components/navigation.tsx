@@ -26,11 +26,21 @@ export function Navigation() {
     }
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('currentUser')
-    setIsLoggedIn(false)
-    setUserName("")
-    router.push('/')
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        localStorage.removeItem('currentUser')
+        setIsLoggedIn(false)
+        setUserName("")
+        router.push('/')
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
@@ -68,7 +78,12 @@ export function Navigation() {
           
           {isLoggedIn ? (
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">{userName}</span>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/profile">
+                  <User className="h-4 w-4 mr-2" />
+                  <span>{userName}</span>
+                </Link>
+              </Button>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />
               </Button>

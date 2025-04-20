@@ -31,89 +31,81 @@ export default function AuthPage() {
     }
   }, [router])
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    
-    const form = e.target as HTMLFormElement
-    const email = (form.elements.namedItem('email') as HTMLInputElement).value
-    const password = (form.elements.namedItem('password') as HTMLInputElement).value
-    
-    // Get users from localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    
-    // Find user with matching email and password
-    const user = users.find((u: User) => u.email === email && u.password === password)
-    
-    if (user) {
-      // Store current user in localStorage
-      localStorage.setItem('currentUser', JSON.stringify(user))
+    setSuccess(null)
+
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Daxil olma zamanı xəta baş verdi')
+      }
+
+      // Store user info in localStorage
+      localStorage.setItem('currentUser', JSON.stringify({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email
+      }))
+
       setSuccess('Uğurla daxil oldunuz!')
-      
-      // Redirect to home page after a short delay
       setTimeout(() => {
         router.push('/')
       }, 1500)
-    } else {
-      setError('Email və ya şifrə yanlışdır')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Daxil olma zamanı xəta baş verdi')
+    } finally {
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
   }
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    
-    const form = e.target as HTMLFormElement
-    const name = (form.elements.namedItem('name') as HTMLInputElement).value
-    const email = (form.elements.namedItem('email-signup') as HTMLInputElement).value
-    const password = (form.elements.namedItem('password-signup') as HTMLInputElement).value
-    const confirmPassword = (form.elements.namedItem('password-confirm') as HTMLInputElement).value
-    
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('Şifrələr uyğun gəlmir')
+    setSuccess(null)
+
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Qeydiyyat zamanı xəta baş verdi')
+      }
+
+      setSuccess('Hesabınız uğurla yaradıldı! İndi daxil ola bilərsiniz.')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Qeydiyyat zamanı xəta baş verdi')
+    } finally {
       setIsLoading(false)
-      return
     }
-    
-    // Get existing users from localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    
-    // Check if email already exists
-    if (users.some((u: User) => u.email === email)) {
-      setError('Bu email artıq istifadə olunur')
-      setIsLoading(false)
-      return
-    }
-    
-    // Create new user
-    const newUser: User = {
-      name,
-      email,
-      password
-    }
-    
-    // Add user to users array
-    users.push(newUser)
-    
-    // Save updated users array to localStorage
-    localStorage.setItem('users', JSON.stringify(users))
-    
-    // Store current user in localStorage
-    localStorage.setItem('currentUser', JSON.stringify(newUser))
-    
-    setSuccess('Hesabınız uğurla yaradıldı!')
-    
-    // Redirect to home page after a short delay
-    setTimeout(() => {
-      router.push('/')
-    }, 1500)
-    
-    setIsLoading(false)
   }
 
   return (
@@ -146,6 +138,7 @@ export default function AuthPage() {
                 {success}
               </div>
             )}
+            
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Daxil ol</TabsTrigger>
@@ -156,11 +149,11 @@ export default function AuthPage() {
                   <div className="grid gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" placeholder="m@example.com" required />
+                      <Input id="email" name="email" type="email" placeholder="m@example.com" required />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="password">Şifrə</Label>
-                      <Input id="password" type="password" required />
+                      <Input id="password" name="password" type="password" required />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Yüklənir..." : "Daxil ol"}
@@ -173,19 +166,15 @@ export default function AuthPage() {
                   <div className="grid gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="name">Ad</Label>
-                      <Input id="name" placeholder="Adınız" required />
+                      <Input id="name" name="name" placeholder="Adınız" required />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="email-signup">Email</Label>
-                      <Input id="email-signup" type="email" placeholder="m@example.com" required />
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" name="email" type="email" placeholder="m@example.com" required />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="password-signup">Şifrə</Label>
-                      <Input id="password-signup" type="password" required />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="password-confirm">Şifrəni təsdiqləyin</Label>
-                      <Input id="password-confirm" type="password" required />
+                      <Label htmlFor="password">Şifrə</Label>
+                      <Input id="password" name="password" type="password" required />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Yüklənir..." : "Qeydiyyatdan keç"}
