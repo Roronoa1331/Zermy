@@ -21,7 +21,7 @@ const products = [
     hasAR: true, // This product has AR functionality
   },
   {
-    id: 3,
+    id: 6,
     name: "Şam",
     price: 75.00,
     image: "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
