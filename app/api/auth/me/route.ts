@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { verify } from 'jsonwebtoken';
 
+export const runtime = 'nodejs';
+
 export async function GET() {
   try {
     const token = cookies().get('token')?.value;
@@ -37,7 +39,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error in /api/auth/me:', error);
     return NextResponse.json(
-      { error: 'Daxili server xətası' },
+      { error: 'Server xətası' },
       { status: 500 }
     );
   }
