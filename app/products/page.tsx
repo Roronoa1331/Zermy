@@ -183,12 +183,15 @@ function ProductsContent() {
                   Səbətə əlavə et
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="flex-1">
-                <Link href={`/ar-viewer/${product.id}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  AR-da bax
-                </Link>
-              </Button>
+              {(product.id === 1 || product.id === 6) && (
+                <Button asChild variant="outline" className="flex-1">
+                  <Link href={`/ar-viewer/${product.id}`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    AR-da bax
+                    <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">New</span>
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         ))}
