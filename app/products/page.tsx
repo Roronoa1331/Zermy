@@ -184,7 +184,7 @@ function ProductsContent() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="flex-1">
-                <Link href={`/ar/${product.id}`}>
+                <Link href={`/ar-viewer/${product.id}`}>
                   <Eye className="mr-2 h-4 w-4" />
                   AR-da bax
                 </Link>
