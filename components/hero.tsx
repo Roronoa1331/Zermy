@@ -8,7 +8,7 @@ export function Hero() {
       <div className="container px-4">
         <div className="grid gap-8 md:grid-cols-2 items-center">
           <div className="space-y-8">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Həm təbiət, <br></br> Həm cüzdan üçün sərfəli ticarət!🌿</h1>
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Həm təbiət, <br></br> Həm pul kisəniz üçün sərfəli ticarət!🌿</h1>
             <div className="flex gap-12">
               <div>
                 <p className="text-3xl font-bold">50+</p>
