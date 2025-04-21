@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { ShoppingCart } from "lucide-react"
+import { Store } from 'lucide-react';
 import Link from "next/link"
 
 export default function OrdersPage() {
@@ -7,7 +7,7 @@ export default function OrdersPage() {
     <div className="container py-16">
       <div className="max-w-2xl mx-auto text-center space-y-8">
         <div className="space-y-4">
-          <ShoppingCart className="h-16 w-16 mx-auto text-muted-foreground" />
+          <Store className="h-16 w-16 mx-auto text-muted-foreground" />
           <h1 className="text-3xl font-bold">Tezliklə</h1>
           <p className="text-xl text-muted-foreground">
             Sifarişlərə baxmaq funksionallığı tezliklə aktivləşdiriləcək
