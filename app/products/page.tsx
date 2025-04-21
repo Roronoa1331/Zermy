@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { ShoppingCart, Eye } from "lucide-react"
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, Eye } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 
 // Product data
 const products = [
@@ -125,43 +125,43 @@ const products = [
       "Yüngül və rahat"
     ]
   }
-]
+];
 
 function ProductsContent() {
-  const searchParams = useSearchParams()
-  const [cartItems, setCartItems] = useState<typeof products>([])
+  const searchParams = useSearchParams();
+  const [cartItems, setCartItems] = useState<typeof products>([]);
 
   useEffect(() => {
     // Load cart from localStorage
-    const savedCart = localStorage.getItem('cart')
+    const savedCart = localStorage.getItem("cart");
     if (savedCart) {
-      setCartItems(JSON.parse(savedCart))
+      setCartItems(JSON.parse(savedCart));
     }
 
     // Handle adding items to cart
-    const productId = searchParams.get('add')
+    const productId = searchParams.get("add");
     if (productId) {
-      const product = products.find(p => p.id === Number(productId))
+      const product = products.find((p) => p.id === Number(productId));
       if (product) {
-        setCartItems(prevItems => {
-          const existingItem = prevItems.find(item => item.id === product.id)
+        setCartItems((prevItems) => {
+          const existingItem = prevItems.find((item) => item.id === product.id);
           if (existingItem) {
-            return prevItems
+            return prevItems;
           }
-          const newItems = [...prevItems, product]
-          localStorage.setItem('cart', JSON.stringify(newItems))
-          return newItems
-        })
+          const newItems = [...prevItems, product];
+          localStorage.setItem("cart", JSON.stringify(newItems));
+          return newItems;
+        });
       }
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   return (
     <div className="container py-16">
-      <h1 className="text-3xl font-bold mb-8">Məhsullarımız</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <h1 className="text-3xl font-bold mb-8 text-center md:text-left">Məhsullarımız</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         {products.map((product) => (
-          <div key={product.id} className="border rounded-lg overflow-hidden">
+          <div key={product.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
             <Link href={`/products/${product.id}`}>
               <div className="aspect-square overflow-hidden">
                 <img
@@ -171,12 +171,12 @@ function ProductsContent() {
                 />
               </div>
               <div className="p-4">
-                <h2 className="text-xl font-semibold">{product.name}</h2>
-                <p className="text-lg font-medium mt-2">{product.price.toFixed(2)} ₼</p>
-                <p className="text-gray-600 mt-2 line-clamp-2">{product.description}</p>
+                <h2 className="text-lg md:text-xl font-semibold">{product.name}</h2>
+                <p className="text-base md:text-lg font-medium mt-2">{product.price.toFixed(2)} ₼</p>
+                <p className="text-sm md:text-base text-gray-600 mt-2 line-clamp-2">{product.description}</p>
               </div>
             </Link>
-            <div className="p-4 pt-0 flex gap-2">
+            <div className="p-4 pt-0 flex flex-col sm:flex-row gap-2">
               <Button asChild className="flex-1">
                 <Link href={`/cart?add=${product.id}`}>
                   <ShoppingCart className="mr-2 h-4 w-4" />
@@ -188,7 +188,9 @@ function ProductsContent() {
                   <Link href={`/ar-viewer/${product.id}`}>
                     <Eye className="mr-2 h-4 w-4" />
                     AR-da bax
-                    <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Yeni</span>
+                    <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                      Yeni
+                    </span>
                   </Link>
                 </Button>
               )}
@@ -197,7 +199,7 @@ function ProductsContent() {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export default function ProductsPage() {
@@ -205,5 +207,5 @@ export default function ProductsPage() {
     <Suspense fallback={<div className="container py-16 text-center">Loading...</div>}>
       <ProductsContent />
     </Suspense>
-  )
-} 
+  );
+}
