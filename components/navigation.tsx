@@ -85,6 +85,12 @@ export function Navigation() {
           >
             Əlaqə
           </Link>
+          <Link
+            href="/auth/seller/register"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md"
+          >
+            Satıcı ol
+          </Link>
         </div>
 
         <div className="hidden md:flex items-center space-x-4">

@@ -12,6 +12,23 @@ model User {
   name      String
   email     String   @unique
   password  String
+  role      String   @default("customer") // "customer" or "seller"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  products  Product[] // Products created by the seller
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  image       String
+  modelUrl    String?
+  hasAR       Boolean  @default(false)
+  features    String[]
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
