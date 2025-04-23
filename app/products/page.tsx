@@ -48,6 +48,22 @@ const SAM_PRODUCT: Product = {
   hasAR: true
 };
 
+// Define the Xalça (carpet) product
+const XALCA_PRODUCT: Product = {
+  id: "xalca-fallback",
+  name: "Xalça",
+  price: 300.00,
+  image: "https://m.media-amazon.com/images/S/al-na-9d5791cf-3faf/cde13f96-75ba-4b9f-87c5-1257b41cbfef._SL480_.jpg",
+  description: "Əl toxunması, təbii yun xalça. Ənənəvi naxışlar və yüksək keyfiyyətli material.",
+  features: [
+    "Əl toxunması",
+    "Təbii yun",
+    "Ənənəvi naxışlar",
+    "Yüksək keyfiyyətli material"
+  ],
+  hasAR: false
+};
+
 export default function ProductsPage() {
   return (
     <Suspense fallback={<div className="container py-16 text-center">Yüklənir...</div>}>
@@ -82,16 +98,22 @@ function ProductsContent() {
           p.name.toLowerCase().includes('şam')
         );
         
-        // If Çanta or Şam doesn't exist, add them to the products
+        // Check if Xalça exists in the products
+        const hasXalca = data.products.some((p: Product) => 
+          p.name.toLowerCase().includes('xalça')
+        );
+        
+        // If any of the fallback products don't exist, add them to the products
         let fallbackProducts = [];
         if (!hasCanta) fallbackProducts.push(CANTA_PRODUCT);
         if (!hasSam) fallbackProducts.push(SAM_PRODUCT);
+        if (!hasXalca) fallbackProducts.push(XALCA_PRODUCT);
         
         setProducts([...fallbackProducts, ...data.products]);
       } catch (err) {
         console.error('Error fetching products:', err);
         // If there's an error, at least show the fallback products
-        setProducts([CANTA_PRODUCT, SAM_PRODUCT]);
+        setProducts([CANTA_PRODUCT, SAM_PRODUCT, XALCA_PRODUCT]);
       } finally {
         setLoading(false);
       }
