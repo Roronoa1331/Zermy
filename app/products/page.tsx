@@ -32,6 +32,22 @@ const CANTA_PRODUCT: Product = {
   hasAR: true
 };
 
+// Define the Şam (candle) product
+const SAM_PRODUCT: Product = {
+  id: "sam-fallback",
+  name: "Şam",
+  price: 7.00,
+  image: "https://cdn.shopify.com/s/files/1/2219/6397/files/Bamboo_Candle_copy_1024x1024.png?v=1698242921",
+  description: "Təbii materiallardan hazırlanmış, uzun yanma müddəti olan şam. Evinizə rahatlıq və istilik gətirir.",
+  features: [
+    "Təbii material",
+    "Uzun yanma müddəti",
+    "Ətraf mühitə dost",
+    "Rahatlıq və istilik"
+  ],
+  hasAR: true
+};
+
 export default function ProductsPage() {
   return (
     <Suspense fallback={<div className="container py-16 text-center">Yüklənir...</div>}>
@@ -61,16 +77,21 @@ function ProductsContent() {
           p.name.toLowerCase().includes('çanta')
         );
         
-        // If Çanta doesn't exist, add it to the products
-        if (!hasCanta) {
-          setProducts([CANTA_PRODUCT, ...data.products]);
-        } else {
-          setProducts(data.products);
-        }
+        // Check if Şam exists in the products
+        const hasSam = data.products.some((p: Product) => 
+          p.name.toLowerCase().includes('şam')
+        );
+        
+        // If Çanta or Şam doesn't exist, add them to the products
+        let fallbackProducts = [];
+        if (!hasCanta) fallbackProducts.push(CANTA_PRODUCT);
+        if (!hasSam) fallbackProducts.push(SAM_PRODUCT);
+        
+        setProducts([...fallbackProducts, ...data.products]);
       } catch (err) {
         console.error('Error fetching products:', err);
-        // If there's an error, at least show the Çanta product
-        setProducts([CANTA_PRODUCT]);
+        // If there's an error, at least show the fallback products
+        setProducts([CANTA_PRODUCT, SAM_PRODUCT]);
       } finally {
         setLoading(false);
       }
