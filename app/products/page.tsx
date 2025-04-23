@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Eye } from "lucide-react";
+import { ShoppingCart, Eye, View } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
@@ -172,6 +172,16 @@ function ProductsContent() {
                     Ətraflı
                   </Link>
                 </Button>
+                
+                {product.hasAR && (
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href={`/ar-viewer/1`}>
+                      <View className="mr-2 h-4 w-4" />
+                      AR-da bax <span className="ml-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">yeni</span>
+                    </Link>
+                  </Button>
+                )}
+                
                 <Button asChild variant="outline" className="w-full">
                   <Link href={`/cart?add=${product.id}`}>
                     <ShoppingCart className="mr-2 h-4 w-4" />

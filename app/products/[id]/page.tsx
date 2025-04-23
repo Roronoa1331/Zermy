@@ -133,9 +133,9 @@ export default function ProductPage() {
 
               {product.hasAR && (
                 <Button asChild variant="outline" className="w-full">
-                  <Link href={`/ar-viewer/${product.id}`}>
+                  <Link href={`/ar-viewer/1`}>
                     <View className="mr-2 h-4 w-4" />
-                    AR-da bax
+                    AR-da bax <span className="ml-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">yeni</span>
                   </Link>
                 </Button>
               )}
