@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ShoppingCart } from "lucide-react"
+import { ShoppingCart, View } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -123,12 +123,23 @@ export default function ProductPage() {
               )}
             </div>
 
-            <Button asChild className="w-full">
-              <Link href={`/cart?add=${product.id}`}>
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Səbətə əlavə et
-              </Link>
-            </Button>
+            <div className="flex flex-col gap-4">
+              <Button asChild className="w-full">
+                <Link href={`/cart?add=${product.id}`}>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Səbətə əlavə et
+                </Link>
+              </Button>
+
+              {product.hasAR && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link href={`/ar-viewer/${product.id}`}>
+                    <View className="mr-2 h-4 w-4" />
+                    AR-da bax
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
