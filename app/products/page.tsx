@@ -14,6 +14,7 @@ interface Product {
   description: string;
   features: string[];
   hasAR: boolean;
+  arId?: number;
 }
 
 // Define the Çanta product as a fallback
@@ -29,7 +30,8 @@ const CANTA_PRODUCT: Product = {
     "Yüngül və rahat",
     "Çoxməqsədli dizayn"
   ],
-  hasAR: true
+  hasAR: true,
+  arId: 1
 };
 
 // Define the Şam (candle) product
@@ -45,7 +47,8 @@ const SAM_PRODUCT: Product = {
     "Ətraf mühitə dost",
     "Rahatlıq və istilik"
   ],
-  hasAR: true
+  hasAR: true,
+  arId: 6
 };
 
 // Define the Xalça (carpet) product
@@ -218,7 +221,7 @@ function ProductsContent() {
                 
                 {product.hasAR && (
                   <Button asChild variant="outline" className="w-full">
-                    <Link href={`/ar-viewer/1`}>
+                    <Link href={`/ar-viewer/${product.arId || 1}`}>
                       <View className="mr-2 h-4 w-4" />
                       AR-da bax <span className="ml-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">yeni</span>
                     </Link>
