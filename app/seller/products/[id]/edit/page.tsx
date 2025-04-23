@@ -268,14 +268,29 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="modelUrl">3D Model URL (İstəyə bağlı)</Label>
-                <Input
-                  id="modelUrl"
-                  name="modelUrl"
-                  type="url"
-                  defaultValue={product.modelUrl || ''}
-                  placeholder="https://example.com/model.glb"
-                />
+                <Label htmlFor="modelUrl">3D Model URL və ya Fayl</Label>
+                <div className="space-y-4">
+                  <Input
+                    id="modelUrl"
+                    name="modelUrl"
+                    type="url"
+                    defaultValue={product.modelUrl || ''}
+                    placeholder="https://example.com/model.glb"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="modelFile" className="text-sm text-muted-foreground">və ya</Label>
+                    <Input
+                      id="modelFile"
+                      name="modelFile"
+                      type="file"
+                      accept=".glb,.gltf"
+                      className="cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Dəstəklənən formatlar: .glb, .gltf
+                  </p>
+                </div>
               </div>
               
               <div className="flex items-center space-x-2">

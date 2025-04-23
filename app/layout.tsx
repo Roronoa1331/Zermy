@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Montserrat } from "next/font/google";
 import "./globals.css"
 import { Navigation } from "@/components/navigation"
+import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "600", "700"] });
@@ -23,6 +24,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <Navigation />
         {children}
+        <Script 
+          src="https://scripts.simpleanalyticscdn.com/latest.js" 
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )

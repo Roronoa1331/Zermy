@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link';
 import { Package } from 'lucide-react';
 
-export default function SellerRegister() {
+export default function SellerLogin() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,42 +21,30 @@ export default function SellerRegister() {
 
     const formData = new FormData(e.currentTarget);
     const data = {
-      name: formData.get('name'),
       email: formData.get('email'),
       password: formData.get('password'),
-      confirmPassword: formData.get('confirmPassword'),
     };
 
-    if (data.password !== data.confirmPassword) {
-      setError('Şifrələr uyğun gəlmir');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch('/api/auth/seller/register', {
+      const response = await fetch('/api/auth/seller/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+        body: JSON.stringify(data),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Qeydiyyat zamanı xəta baş verdi');
+        throw new Error(result.error || 'Daxil olma zamanı xəta baş verdi');
       }
 
-      // Redirect to seller dashboard after successful registration
+      // Redirect to seller dashboard after successful login
       router.push('/seller');
     } catch (err) {
-      console.error('Registration error:', err);
-      setError(err instanceof Error ? err.message : 'Qeydiyyat zamanı xəta baş verdi');
+      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : 'Daxil olma zamanı xəta baş verdi');
     } finally {
       setLoading(false);
     }
@@ -68,9 +56,9 @@ export default function SellerRegister() {
         <Card>
           <CardHeader className="space-y-1 text-center">
             <Package className="w-12 h-12 mx-auto text-primary" />
-            <CardTitle className="text-2xl">Satıcı Qeydiyyatı</CardTitle>
+            <CardTitle className="text-2xl">Satıcı Girişi</CardTitle>
             <CardDescription>
-              Məhsullarınızı satmaq üçün qeydiyyatdan keçin
+              Satıcı hesabınıza daxil olun
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -80,17 +68,6 @@ export default function SellerRegister() {
                   {error}
                 </div>
               )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="name">Ad və Soyad</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="Ad və soyadınızı daxil edin"
-                  required
-                />
-              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -113,28 +90,17 @@ export default function SellerRegister() {
                   required
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Şifrəni təsdiqlə</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="Şifrənizi təkrar daxil edin"
-                  required
-                />
-              </div>
             </CardContent>
             
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Qeydiyyat...' : 'Qeydiyyatdan keç'}
+                {loading ? 'Daxil olunur...' : 'Daxil ol'}
               </Button>
               
-              <div className="mt-4 text-center text-sm">
-                Artıq hesabınız var?{' '}
-                <Link href="/auth/seller/login" className="text-primary hover:underline">
-                  Daxil olun
+              <div className="text-sm text-center text-muted-foreground">
+                Hesabınız yoxdur?{' '}
+                <Link href="/auth/seller/register" className="text-primary hover:underline">
+                  Qeydiyyatdan keçin
                 </Link>
               </div>
             </CardFooter>

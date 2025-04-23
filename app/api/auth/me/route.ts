@@ -19,14 +19,7 @@ export async function GET() {
     const decoded = verify(token, process.env.JWT_SECRET!) as { id: string };
 
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true
-      }
+      where: { id: decoded.id }
     });
 
     if (!user) {
@@ -36,7 +29,9 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(user);
+    // Return user data without password
+    const { password, ...userWithoutPassword } = user;
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('Error in /api/auth/me:', error);
     return NextResponse.json(

@@ -13,18 +13,37 @@ export function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
     // Check if user is logged in
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      setIsLoggedIn(true);
-      const user = JSON.parse(currentUser);
-      setUserName(user.name);
-    } else {
-      setIsLoggedIn(false);
-      setUserName("");
-    }
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        const user = await response.json();
+        
+        if (response.ok) {
+          setIsLoggedIn(true);
+          setUserName(user.name);
+          setUserRole(user.role);
+          // Store user data in localStorage
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        } else {
+          setIsLoggedIn(false);
+          setUserName('');
+          setUserRole('');
+          localStorage.removeItem('currentUser');
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        setIsLoggedIn(false);
+        setUserName('');
+        setUserRole('');
+        localStorage.removeItem('currentUser');
+      }
+    };
+    
+    checkAuth();
   }, []);
 
   const handleLogout = async () => {
@@ -37,6 +56,7 @@ export function Navigation() {
         localStorage.removeItem("currentUser");
         setIsLoggedIn(false);
         setUserName("");
+        setUserRole("");
         router.push("/");
       }
     } catch (error) {
@@ -85,12 +105,22 @@ export function Navigation() {
           >
             Əlaqə
           </Link>
-          <Link
-            href="/auth/seller/register"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md"
-          >
-            Satıcı ol
-          </Link>
+          {!isLoggedIn && (
+            <Link
+              href="/auth/seller/register"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md"
+            >
+              Satıcı ol
+            </Link>
+          )}
+          {isLoggedIn && userRole === "seller" && (
+            <Link
+              href="/seller"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md"
+            >
+              Satıcı panel
+            </Link>
+          )}
         </div>
 
         <div className="hidden md:flex items-center space-x-4">
@@ -151,6 +181,24 @@ export function Navigation() {
             >
               Əlaqə
             </Link>
+            {!isLoggedIn && (
+              <Link
+                href="/auth/seller/register"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md w-full text-center"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Satıcı ol
+              </Link>
+            )}
+            {isLoggedIn && userRole === "seller" && (
+              <Link
+                href="/seller"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md w-full text-center"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Satıcı panel
+              </Link>
+            )}
             <Link
               href="/cart"
               className="relative p-2 hover:bg-accent rounded-full"

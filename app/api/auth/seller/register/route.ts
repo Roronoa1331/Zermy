@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, password, role } = body;
+    const { name, email, password } = body;
 
     // Validate input
     if (!name || !email || !password) {
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         name,
         email,
         password: hashedPassword,
-        role: 'seller', // Force role to be seller for this endpoint
+        role: 'seller'
       },
     });
 
@@ -46,6 +46,12 @@ export async function POST(request: Request) {
     return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('Registration error:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { error: 'Qeydiyyat zamanı xəta baş verdi' },
       { status: 500 }
