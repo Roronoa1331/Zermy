@@ -205,3 +205,12 @@ model Message {
   @@index([senderId])
   @@index([receiverId])
 }
+
+model ActivityLog {
+  id          String    @id @default(cuid())
+  type        String    // e.g., "ORDER", "STORE", "USER", etc.
+  description String    @db.Text
+  metadata    Json?     // Additional data in JSON format
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
