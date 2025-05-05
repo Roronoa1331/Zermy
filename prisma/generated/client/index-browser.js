@@ -122,7 +122,6 @@ exports.Prisma.UserScalarFieldEnum = {
   name: 'name',
   email: 'email',
   emailVerified: 'emailVerified',
-  image: 'image',
   password: 'password',
   role: 'role',
   createdAt: 'createdAt',
@@ -150,10 +149,15 @@ exports.Prisma.ProductScalarFieldEnum = {
   description: 'description',
   price: 'price',
   image: 'image',
+  modelUrl: 'modelUrl',
+  hasAR: 'hasAR',
+  features: 'features',
   sellerId: 'sellerId',
+  storeId: 'storeId',
+  isActive: 'isActive',
+  stock: 'stock',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  storeId: 'storeId'
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.OrderScalarFieldEnum = {
@@ -218,38 +222,11 @@ exports.Prisma.MessageScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.CartItemScalarFieldEnum = {
+exports.Prisma.ActivityLogScalarFieldEnum = {
   id: 'id',
-  cartId: 'cartId',
-  productId: 'productId',
-  quantity: 'quantity',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.CartScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.PaymentScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  amount: 'amount',
-  status: 'status',
-  stripePaymentIntentId: 'stripePaymentIntentId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.NotificationScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  title: 'title',
-  message: 'message',
-  isRead: 'isRead',
+  type: 'type',
+  description: 'description',
+  metadata: 'metadata',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -257,6 +234,11 @@ exports.Prisma.NotificationScalarFieldEnum = {
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
 };
 
 exports.Prisma.QueryMode = {
@@ -267,6 +249,12 @@ exports.Prisma.QueryMode = {
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
+};
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
 };
 exports.UserRole = exports.$Enums.UserRole = {
   ADMIN: 'ADMIN',
@@ -305,10 +293,7 @@ exports.Prisma.ModelName = {
   Payout: 'Payout',
   Review: 'Review',
   Message: 'Message',
-  CartItem: 'CartItem',
-  Cart: 'Cart',
-  Payment: 'Payment',
-  Notification: 'Notification'
+  ActivityLog: 'ActivityLog'
 };
 
 /**

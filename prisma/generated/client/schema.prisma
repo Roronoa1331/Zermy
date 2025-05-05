@@ -37,28 +37,24 @@ enum PayoutStatus {
 }
 
 model User {
-  id            String         @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String         @unique
+  email         String    @unique
   emailVerified DateTime?
-  image         String?
-  password      String?
-  role          UserRole       @default(BUYER)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  products      Product[]
-  orders        Order[]
-  cart          Cart?
-  payments      Payment[]
-  reviews       Review[]
-  notifications Notification[]
+  password      String
+  role          UserRole  @default(BUYER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // Seller specific fields
   store        Store?
+  products     Product[]
   sellerOrders OrderItem[] @relation("SellerOrders")
   payouts      Payout[]
 
   // Buyer specific fields
+  orders           Order[]
+  reviews          Review[]
   messages         Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
 
@@ -85,20 +81,31 @@ model Store {
 }
 
 model Product {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  description String
+  description String   @db.Text
   price       Float
   image       String
-  sellerId    String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  seller      User        @relation(fields: [sellerId], references: [id])
-  store       Store?      @relation(fields: [storeId], references: [id])
-  storeId     String?
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  reviews     Review[]
+  modelUrl    String?
+  hasAR       Boolean  @default(false)
+  features    String[]
+
+  // Seller relationship
+  seller   User    @relation(fields: [sellerId], references: [id])
+  sellerId String
+  store    Store?  @relation(fields: [storeId], references: [id])
+  storeId  String?
+
+  // Product status
+  isActive Boolean @default(true)
+  stock    Int     @default(0)
+
+  // Relationships
+  orderItems OrderItem[]
+  reviews    Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sellerId])
   @@index([storeId])
@@ -199,53 +206,11 @@ model Message {
   @@index([receiverId])
 }
 
-model CartItem {
-  id        String   @id @default(cuid())
-  cartId    String
-  productId String
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id])
-
-  @@index([cartId])
-  @@index([productId])
-}
-
-model Cart {
-  id        String     @id @default(cuid())
-  userId    String     @unique
-  items     CartItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model Payment {
-  id                    String        @id @default(cuid())
-  user                  User          @relation(fields: [userId], references: [id])
-  userId                String
-  amount                Float
-  status                PaymentStatus @default(PENDING)
-  stripePaymentIntentId String?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-
-  @@index([userId])
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  title     String
-  message   String   @db.Text
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
+model ActivityLog {
+  id          String   @id @default(cuid())
+  type        String // e.g., "ORDER", "STORE", "USER", etc.
+  description String   @db.Text
+  metadata    Json? // Additional data in JSON format
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
