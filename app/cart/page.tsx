@@ -66,13 +66,19 @@ const products = [
 
 function CartContent() {
   const searchParams = useSearchParams()
-  const [cartItems, setCartItems] = useState<Array<typeof products[0] & { quantity: number }>>([])
+  const [cartItems, setCartItems] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Load cart data from API
   useEffect(() => {
     const fetchCart = async () => {
       try {
+        setIsLoading(true)
         const response = await fetch('/api/cart')
+        if (!response.ok) {
+          throw new Error('Failed to fetch cart')
+        }
         const cartData = await response.json()
         
         // Map cart data to full product information
@@ -82,8 +88,12 @@ function CartContent() {
         }).filter(Boolean)
 
         setCartItems(itemsWithDetails)
+        setError(null)
       } catch (error) {
         console.error('Failed to fetch cart:', error)
+        setError('Səbəti yükləmək mümkün olmadı')
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -96,24 +106,43 @@ function CartContent() {
     if (productId) {
       const addToCart = async () => {
         try {
-          await fetch('/api/cart', {
+          setIsLoading(true)
+          const productIdNum = parseInt(productId, 10)
+          if (isNaN(productIdNum)) {
+            throw new Error('Invalid product ID')
+          }
+
+          const response = await fetch('/api/cart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-              productId: Number(productId), 
+              productId: productIdNum, 
               action: 'add'
             })
           })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Failed to add to cart')
+          }
+
           // Refresh cart data
-          const response = await fetch('/api/cart')
-          const cartData = await response.json()
+          const cartResponse = await fetch('/api/cart')
+          if (!cartResponse.ok) {
+            throw new Error('Failed to fetch updated cart')
+          }
+          const cartData = await cartResponse.json()
           const itemsWithDetails = cartData.map((item: any) => {
             const product = products.find(p => p.id === item.id)
             return product ? { ...product, quantity: item.quantity } : null
           }).filter(Boolean)
           setCartItems(itemsWithDetails)
+          setError(null)
         } catch (error) {
           console.error('Failed to add to cart:', error)
+          setError(error instanceof Error ? error.message : 'Məhsulu səbətə əlavə etmək mümkün olmadı')
+        } finally {
+          setIsLoading(false)
         }
       }
       addToCart()
@@ -123,41 +152,76 @@ function CartContent() {
   const updateQuantity = async (id: number, newQuantity: number) => {
     if (newQuantity < 1) return
     try {
-      await fetch('/api/cart', {
+      setIsLoading(true)
+      const response = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: id, action: 'update', quantity: newQuantity })
+        body: JSON.stringify({ 
+          productId: id, 
+          action: 'update', 
+          quantity: newQuantity 
+        })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update quantity')
+      }
+
       // Refresh cart data
-      const response = await fetch('/api/cart')
-      const cartData = await response.json()
+      const cartResponse = await fetch('/api/cart')
+      if (!cartResponse.ok) {
+        throw new Error('Failed to fetch updated cart')
+      }
+      const cartData = await cartResponse.json()
       const itemsWithDetails = cartData.map((item: any) => {
         const product = products.find(p => p.id === item.id)
         return product ? { ...product, quantity: item.quantity } : null
       }).filter(Boolean)
       setCartItems(itemsWithDetails)
+      setError(null)
     } catch (error) {
       console.error('Failed to update quantity:', error)
+      setError(error instanceof Error ? error.message : 'Miqdarı yeniləmək mümkün olmadı')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const removeItem = async (id: number) => {
     try {
-      await fetch('/api/cart', {
+      setIsLoading(true)
+      const response = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: id, action: 'remove' })
+        body: JSON.stringify({ 
+          productId: id, 
+          action: 'remove' 
+        })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to remove item')
+      }
+
       // Refresh cart data
-      const response = await fetch('/api/cart')
-      const cartData = await response.json()
+      const cartResponse = await fetch('/api/cart')
+      if (!cartResponse.ok) {
+        throw new Error('Failed to fetch updated cart')
+      }
+      const cartData = await cartResponse.json()
       const itemsWithDetails = cartData.map((item: any) => {
         const product = products.find(p => p.id === item.id)
         return product ? { ...product, quantity: item.quantity } : null
       }).filter(Boolean)
       setCartItems(itemsWithDetails)
+      setError(null)
     } catch (error) {
       console.error('Failed to remove item:', error)
+      setError(error instanceof Error ? error.message : 'Məhsulu silmək mümkün olmadı')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -168,7 +232,18 @@ function CartContent() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Səbətim</h1>
         
-        {cartItems.length === 0 ? (
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+        
+        {isLoading ? (
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Yüklənir...</p>
+          </div>
+        ) : cartItems.length === 0 ? (
           <div className="text-center space-y-4">
             <ShoppingCart className="h-16 w-16 mx-auto text-muted-foreground" />
             <p className="text-xl text-muted-foreground">Səbətiniz boşdur</p>
@@ -195,6 +270,7 @@ function CartContent() {
                       <Button 
                         className="h-8 w-8 p-0"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={isLoading}
                       >
                         -
                       </Button>
@@ -202,6 +278,7 @@ function CartContent() {
                       <Button 
                         className="h-8 w-8 p-0"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={isLoading}
                       >
                         +
                       </Button>
@@ -209,6 +286,7 @@ function CartContent() {
                     <Button 
                       className="h-8 w-8 p-0"
                       onClick={() => removeItem(item.id)}
+                      disabled={isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -222,7 +300,7 @@ function CartContent() {
                 <span className="text-lg font-medium">Ümumi məbləğ:</span>
                 <span className="text-xl font-bold">{total.toFixed(2)} ₼</span>
               </div>
-              <Button asChild className="w-full mt-4">
+              <Button asChild className="w-full mt-4" disabled={isLoading}>
                 <Link href="/checkout">
                   Sifarişi tamamla
                 </Link>
@@ -237,7 +315,7 @@ function CartContent() {
 
 export default function CartPage() {
   return (
-    <Suspense fallback={<div className="container py-16 text-center">Loading...</div>}>
+    <Suspense fallback={<div className="container py-16 text-center">Yüklənir...</div>}>
       <CartContent />
     </Suspense>
   )

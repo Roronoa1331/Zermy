@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SELLER
+  BUYER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole       @default(BUYER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  products      Product[]
+  orders        Order[]
+  cart          Cart?
+  payments      Payment[]
+  reviews       Review[]
+  notifications Notification[]
+
+  // Seller specific fields
+  store        Store?
+  sellerOrders OrderItem[] @relation("SellerOrders")
+  payouts      Payout[]
+
+  // Buyer specific fields
+  messages         Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  // Common fields
+  stripeCustomerId String?
+  stripeAccountId  String? @unique
+}
+
+model Store {
+  id          String    @id @default(cuid())
+  name        String
+  description String?   @db.Text
+  image       String?
+  seller      User      @relation(fields: [sellerId], references: [id])
+  sellerId    String    @unique
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Store settings
+  commissionRate Float   @default(10) // Platform commission rate in percentage
+  isApproved     Boolean @default(false)
+  isActive       Boolean @default(true)
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  image       String
+  sellerId    String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  seller      User        @relation(fields: [sellerId], references: [id])
+  store       Store?      @relation(fields: [storeId], references: [id])
+  storeId     String?
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+
+  @@index([sellerId])
+  @@index([storeId])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  buyer       User        @relation(fields: [buyerId], references: [id])
+  buyerId     String
+  items       OrderItem[]
+  totalAmount Float
+  status      OrderStatus @default(PENDING)
+
+  // Payment info
+  stripePaymentIntentId String?
+  paymentStatus         PaymentStatus @default(PENDING)
+  isPaid                Boolean       @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buyerId])
+}
+
+model OrderItem {
+  id        String      @id @default(cuid())
+  order     Order       @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product     @relation(fields: [productId], references: [id])
+  productId String
+  seller    User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  sellerId  String
+  quantity  Int
+  unitPrice Float
+  status    OrderStatus @default(PENDING)
+
+  // Shipping info
+  shippingProvider String?
+  trackingNumber   String?
+  shippingDate     DateTime?
+
+  // Payment processing
+  commissionRate Float        @default(10)
+  sellerPayout   Float?
+  payoutStatus   PayoutStatus @default(PENDING)
+  payoutDate     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([sellerId])
+}
+
+model Payout {
+  id             String       @id @default(cuid())
+  seller         User         @relation(fields: [sellerId], references: [id])
+  sellerId       String
+  amount         Float
+  status         PayoutStatus @default(PENDING)
+  stripePayoutId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([sellerId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  rating     Int
+  comment    String   @db.Text
+  isVerified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId   String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId String
+  content    String   @db.Text
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([cartId])
+  @@index([productId])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  user                  User          @relation(fields: [userId], references: [id])
+  userId                String
+  amount                Float
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
