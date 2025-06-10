@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verify } from 'jsonwebtoken'
+import { getToken } from 'next-auth/jwt'
 
 // Paths that don't require authentication
 const publicPaths = [
@@ -9,6 +9,7 @@ const publicPaths = [
   '/products',
   '/api/auth/login',
   '/api/auth/register',
+  '/api/cart',
 ]
 
 // Role-based path access
@@ -26,23 +27,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Get token from cookies
-  const token = request.cookies.get('token')?.value
+  // Get session token
+  const token = await getToken({ req: request })
 
   if (!token) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
   try {
-    // Verify and decode token
-    const decoded = verify(token, process.env.JWT_SECRET!) as {
-      id: string
-      role: 'ADMIN' | 'SELLER' | 'BUYER'
-    }
-
     // Check role-based access
     const hasAccess = Object.entries(roleBasedPaths).some(([role, paths]) => {
-      if (decoded.role === role) {
+      if (token.role === role) {
         return paths.some(p => path.startsWith(p))
       }
       return false
@@ -50,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
     if (!hasAccess) {
       // If user doesn't have access, redirect to appropriate dashboard
-      switch (decoded.role) {
+      switch (token.role) {
         case 'ADMIN':
           return NextResponse.redirect(new URL('/admin', request.url))
         case 'SELLER':
@@ -63,8 +58,8 @@ export async function middleware(request: NextRequest) {
     // Add user info to headers for API routes
     if (path.startsWith('/api/')) {
       const requestHeaders = new Headers(request.headers)
-      requestHeaders.set('user-id', decoded.id)
-      requestHeaders.set('user-role', decoded.role)
+      requestHeaders.set('user-id', token.id)
+      requestHeaders.set('user-role', token.role)
 
       return NextResponse.next({
         request: {
@@ -75,10 +70,8 @@ export async function middleware(request: NextRequest) {
 
     return NextResponse.next()
   } catch (error) {
-    // If token is invalid, clear it and redirect to login
-    const response = NextResponse.redirect(new URL('/auth', request.url))
-    response.cookies.delete('token')
-    return response
+    // If session is invalid, redirect to login
+    return NextResponse.redirect(new URL('/auth', request.url))
   }
 }
 

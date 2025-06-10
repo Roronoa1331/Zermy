@@ -2,16 +2,20 @@ import { NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
-import bcrypt from "bcryptjs"
+import { compare } from "bcryptjs"
+
+type UserRole = "ADMIN" | "SELLER" | "BUYER"
 
 declare module "next-auth" {
-  interface User extends PrismaUser {}
+  interface User {
+    role: UserRole
+  }
   interface Session {
     user: {
       id: string
       email: string
       name?: string | null
-      role: string
+      role: UserRole
     }
   }
 }
@@ -19,7 +23,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string
-    role: string
+    role: UserRole
   }
 }
 
@@ -40,7 +44,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials")
+          throw new Error("Email və şifrə tələb olunur")
         }
 
         const user = await prisma.user.findUnique({
@@ -50,16 +54,16 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user) {
-          throw new Error("User not found")
+          throw new Error("İstifadəçi tapılmadı")
         }
 
-        const isPasswordValid = await bcrypt.compare(
+        const isPasswordValid = await compare(
           credentials.password,
           user.password
         )
 
         if (!isPasswordValid) {
-          throw new Error("Invalid password")
+          throw new Error("Yanlış şifrə")
         }
 
         return {
@@ -74,15 +78,24 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
+        return {
+          ...token,
+          id: user.id,
+          role: user.role,
+        }
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: token.id,
+          role: token.role,
+        }
       }
-      return session
     },
   },
+  secret: process.env.NEXTAUTH_SECRET,
 } 

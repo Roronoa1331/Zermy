@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useSession } from "next-auth/react"
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -21,6 +22,7 @@ interface CartItem {
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -37,6 +39,12 @@ export default function CheckoutPage() {
   })
 
   useEffect(() => {
+    // Redirect if not authenticated
+    if (status === "unauthenticated") {
+      router.push("/login?callbackUrl=/checkout")
+      return
+    }
+
     const fetchCart = async () => {
       try {
         const response = await fetch("/api/cart")
@@ -46,7 +54,20 @@ export default function CheckoutPage() {
           throw new Error(data.error || "Failed to fetch cart")
         }
 
+        if (!data.items || !Array.isArray(data.items)) {
+          throw new Error("Invalid cart data")
+        }
+
         setCartItems(data.items)
+
+        // Pre-fill form with user data if available
+        if (session?.user) {
+          setFormData(prev => ({
+            ...prev,
+            name: session.user.name || "",
+            email: session.user.email || "",
+          }))
+        }
       } catch (err) {
         console.error("Error fetching cart:", err)
         setError(err instanceof Error ? err.message : "Failed to load cart")
@@ -55,8 +76,10 @@ export default function CheckoutPage() {
       }
     }
 
-    fetchCart()
-  }, [])
+    if (status === "authenticated") {
+      fetchCart()
+    }
+  }, [status, session, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -66,8 +89,13 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError("")
 
     try {
+      if (!cartItems.length) {
+        throw new Error("Your cart is empty")
+      }
+
       // Create payment intent
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
@@ -114,7 +142,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (loading) {
+  if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -124,11 +152,36 @@ export default function CheckoutPage() {
 
   if (error) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-red-500">{error}</p>
-        <Button onClick={() => router.push("/cart")} className="mt-4">
-          Return to Cart
-        </Button>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-red-500">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={() => router.push("/cart")}>
+              Return to Cart
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!cartItems.length) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <Card>
+          <CardHeader>
+            <CardTitle>Empty Cart</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">Your cart is empty</p>
+            <Button onClick={() => router.push("/products")}>
+              Continue Shopping
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -197,7 +250,6 @@ export default function CheckoutPage() {
                   required
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -209,7 +261,6 @@ export default function CheckoutPage() {
                   required
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Input
@@ -220,7 +271,6 @@ export default function CheckoutPage() {
                   required
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
@@ -232,7 +282,6 @@ export default function CheckoutPage() {
                     required
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="state">State</Label>
                   <Input
@@ -244,7 +293,6 @@ export default function CheckoutPage() {
                   />
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="zip">ZIP Code</Label>
                 <Input
@@ -255,45 +303,12 @@ export default function CheckoutPage() {
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cardNumber">Card Number</Label>
-                <Input
-                  id="cardNumber"
-                  name="cardNumber"
-                  value={formData.cardNumber}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="expiry">Expiry Date</Label>
-                  <Input
-                    id="expiry"
-                    name="expiry"
-                    placeholder="MM/YY"
-                    value={formData.expiry}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cvc">CVC</Label>
-                  <Input
-                    id="cvc"
-                    name="cvc"
-                    value={formData.cvc}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Processing..." : "Pay Now"}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
               </Button>
             </form>
           </CardContent>

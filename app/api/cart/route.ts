@@ -1,19 +1,73 @@
 import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // In-memory storage for cart data (replace with database in production)
 let cartData: { id: number; quantity: number }[] = []
 
 export async function GET() {
   try {
-    return NextResponse.json(cartData)
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get product details for items in cart
+    const items = await Promise.all(
+      cartData.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.id.toString() },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            image: true,
+          },
+        })
+
+        if (!product) {
+          return null
+        }
+
+        return {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: item.quantity,
+        }
+      })
+    )
+
+    // Filter out any null items (products that no longer exist)
+    const validItems = items.filter((item): item is NonNullable<typeof item> => item !== null)
+
+    return NextResponse.json({ items: validItems })
   } catch (error) {
     console.error('Error fetching cart:', error)
-    return NextResponse.json({ error: 'Failed to fetch cart' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch cart' },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { productId, action, quantity } = body
 
@@ -68,7 +122,37 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json(cartData)
+    // Get updated cart with product details
+    const items = await Promise.all(
+      cartData.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.id.toString() },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            image: true,
+          },
+        })
+
+        if (!product) {
+          return null
+        }
+
+        return {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: item.quantity,
+        }
+      })
+    )
+
+    // Filter out any null items (products that no longer exist)
+    const validItems = items.filter((item): item is NonNullable<typeof item> => item !== null)
+
+    return NextResponse.json({ items: validItems })
   } catch (error) {
     console.error('Cart error:', error)
     return NextResponse.json(
