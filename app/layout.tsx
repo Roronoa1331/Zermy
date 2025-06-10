@@ -4,6 +4,7 @@ import { Inter, Montserrat } from "next/font/google";
 import "./globals.css"
 import { Navigation } from "@/components/navigation"
 import Script from "next/script"
+import AuthProvider from "@/components/providers/session-provider";
 
 const inter = Inter({ subsets: ["latin"] })
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "600", "700"] });
@@ -22,8 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Navigation />
-        {children}
+        <AuthProvider>
+          <Navigation />
+          {children}
+        </AuthProvider>
         <Script 
           src="https://scripts.simpleanalyticscdn.com/latest.js" 
           strategy="afterInteractive"

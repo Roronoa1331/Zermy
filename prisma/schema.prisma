@@ -18,6 +18,3 @@ model Waitlist {
   phone     String
   createdAt DateTime @default(now())
 }
-
-// Find all files that import getServerSession and update them like this:
-import { getServerSession } from "next-auth/next";
