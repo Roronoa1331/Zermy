@@ -1,31 +1,39 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { loadStripe } from "@stripe/stripe-js"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useSession } from "next-auth/react";
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface CartItem {
-  id: string
-  name: string
-  price: number
-  quantity: number
-  image: string
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function CheckoutPage() {
-  const router = useRouter()
-  const { data: session, status } = useSession()
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -36,64 +44,64 @@ export default function CheckoutPage() {
     cardNumber: "",
     expiry: "",
     cvc: "",
-  })
+  });
 
   useEffect(() => {
     // Redirect if not authenticated
     if (status === "unauthenticated") {
-      router.push("/login?callbackUrl=/checkout")
-      return
+      router.push("/login?callbackUrl=/checkout");
+      return;
     }
 
     const fetchCart = async () => {
       try {
-        const response = await fetch("/api/cart")
-        const data = await response.json()
+        const response = await fetch("/api/cart");
+        const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch cart")
+          throw new Error(data.error || "Failed to fetch cart");
         }
 
         if (!data.items || !Array.isArray(data.items)) {
-          throw new Error("Invalid cart data")
+          throw new Error("Invalid cart data");
         }
 
-        setCartItems(data.items)
+        setCartItems(data.items);
 
         // Pre-fill form with user data if available
         if (session?.user) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
             name: session.user.name || "",
             email: session.user.email || "",
-          }))
+          }));
         }
       } catch (err) {
-        console.error("Error fetching cart:", err)
-        setError(err instanceof Error ? err.message : "Failed to load cart")
+        console.error("Error fetching cart:", err);
+        setError(err instanceof Error ? err.message : "Failed to load cart");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (status === "authenticated") {
-      fetchCart()
+      fetchCart();
     }
-  }, [status, session, router])
+  }, [status, session, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
       if (!cartItems.length) {
-        throw new Error("Your cart is empty")
+        throw new Error("Your cart is empty");
       }
 
       // Create payment intent
@@ -115,39 +123,39 @@ export default function CheckoutPage() {
             },
           },
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create payment intent")
+        throw new Error(data.error || "Failed to create payment intent");
       }
 
       // Redirect to Stripe Checkout
-      const stripe = await stripePromise
-      if (!stripe) throw new Error("Stripe failed to initialize")
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Stripe failed to initialize");
 
       const { error } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
-      })
+      });
 
       if (error) {
-        throw new Error(error.message)
+        throw new Error(error.message);
       }
     } catch (err) {
-      console.error("Error during checkout:", err)
-      setError(err instanceof Error ? err.message : "Checkout failed")
+      console.error("Error during checkout:", err);
+      setError(err instanceof Error ? err.message : "Checkout failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -159,13 +167,11 @@ export default function CheckoutPage() {
           </CardHeader>
           <CardContent>
             <p className="mb-4">{error}</p>
-            <Button onClick={() => router.push("/cart")}>
-              Return to Cart
-            </Button>
+            <Button onClick={() => router.push("/cart")}>Return to Cart</Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   if (!cartItems.length) {
@@ -183,13 +189,13 @@ export default function CheckoutPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   const total = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
-  )
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -203,7 +209,10 @@ export default function CheckoutPage() {
           <CardContent>
             <div className="space-y-4">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between">
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center space-x-4">
                     <img
                       src={item.image}
@@ -315,5 +324,5 @@ export default function CheckoutPage() {
         </Card>
       </div>
     </div>
-  )
-} 
+  );
+}
