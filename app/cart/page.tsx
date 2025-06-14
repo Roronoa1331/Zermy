@@ -71,36 +71,34 @@ function CartContent() {
   const [isLoading, setIsLoading] = useState(false)
 
   // Load cart data from API
-  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        setIsLoading(true)
-        const response = await fetch('/api/cart')
-        if (!response.ok) {
-          throw new Error('Failed to fetch cart')
-        }
-        const cartData = await response.json()
-        
-        // Map cart data to full product information
-        const itemsWithDetails = cartData.map((item: any) => {
-          const product = products.find(p => p.id === item.id)
-          return product ? { ...product, quantity: item.quantity } : null
-        }).filter(Boolean)
-
-        setCartItems(itemsWithDetails)
-        setError(null)
-      } catch (error) {
-        console.error('Failed to fetch cart:', error)
-        setError('Səbəti yükləmək mümkün olmadı')
-      } finally {
-        setIsLoading(false)
+  const fetchCart = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/cart')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch cart')
       }
+      
+      const cartData = await response.json()
+      setCartItems(cartData)
+      setError(null)
+      
+      // Dispatch event to update cart count in navigation
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+    } catch (error) {
+      console.error('Failed to fetch cart:', error)
+      setError('Səbəti yükləmək mümkün olmadı')
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchCart()
   }, [])
 
-  // Handle adding items to cart
+  // Handle adding items to cart from URL parameter
   useEffect(() => {
     const productId = searchParams.get('add')
     if (productId) {
@@ -122,25 +120,20 @@ function CartContent() {
           })
 
           if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || 'Failed to add to cart')
+            throw new Error('Failed to add to cart')
+          }
+
+          const result = await response.json()
+          
+          if (!result.success) {
+            throw new Error('Failed to add to cart')
           }
 
           // Refresh cart data
-          const cartResponse = await fetch('/api/cart')
-          if (!cartResponse.ok) {
-            throw new Error('Failed to fetch updated cart')
-          }
-          const cartData = await cartResponse.json()
-          const itemsWithDetails = cartData.map((item: any) => {
-            const product = products.find(p => p.id === item.id)
-            return product ? { ...product, quantity: item.quantity } : null
-          }).filter(Boolean)
-          setCartItems(itemsWithDetails)
-          setError(null)
+          fetchCart()
         } catch (error) {
           console.error('Failed to add to cart:', error)
-          setError(error instanceof Error ? error.message : 'Məhsulu səbətə əlavə etmək mümkün olmadı')
+          setError('Məhsulu səbətə əlavə etmək mümkün olmadı')
         } finally {
           setIsLoading(false)
         }
@@ -169,17 +162,7 @@ function CartContent() {
       }
 
       // Refresh cart data
-      const cartResponse = await fetch('/api/cart')
-      if (!cartResponse.ok) {
-        throw new Error('Failed to fetch updated cart')
-      }
-      const cartData = await cartResponse.json()
-      const itemsWithDetails = cartData.map((item: any) => {
-        const product = products.find(p => p.id === item.id)
-        return product ? { ...product, quantity: item.quantity } : null
-      }).filter(Boolean)
-      setCartItems(itemsWithDetails)
-      setError(null)
+      fetchCart()
     } catch (error) {
       console.error('Failed to update quantity:', error)
       setError(error instanceof Error ? error.message : 'Miqdarı yeniləmək mümkün olmadı')
@@ -206,17 +189,7 @@ function CartContent() {
       }
 
       // Refresh cart data
-      const cartResponse = await fetch('/api/cart')
-      if (!cartResponse.ok) {
-        throw new Error('Failed to fetch updated cart')
-      }
-      const cartData = await cartResponse.json()
-      const itemsWithDetails = cartData.map((item: any) => {
-        const product = products.find(p => p.id === item.id)
-        return product ? { ...product, quantity: item.quantity } : null
-      }).filter(Boolean)
-      setCartItems(itemsWithDetails)
-      setError(null)
+      fetchCart()
     } catch (error) {
       console.error('Failed to remove item:', error)
       setError(error instanceof Error ? error.message : 'Məhsulu silmək mümkün olmadı')
@@ -319,4 +292,4 @@ export default function CartPage() {
       <CartContent />
     </Suspense>
   )
-} 
+}

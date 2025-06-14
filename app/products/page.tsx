@@ -166,6 +166,8 @@ function ProductsContent() {
   const addToCart = async (productId: number) => {
     try {
       setIsLoading(true);
+      setError('');
+      
       const response = await fetch('/api/cart', {
         method: 'POST',
         headers: {
@@ -178,15 +180,23 @@ function ProductsContent() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add to cart');
+        throw new Error('Failed to add to cart');
       }
 
-      // Redirect to cart page after successful addition
-      window.location.href = '/cart';
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error('Failed to add to cart');
+      }
+
+      // Dispatch custom event to update cart count
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+      
+      // Show success message
+      alert('Məhsul səbətə əlavə edildi!');
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      setError(error instanceof Error ? error.message : 'Məhsulu səbətə əlavə etmək mümkün olmadı');
+      setError('Məhsulu səbətə əlavə etmək mümkün olmadı');
     } finally {
       setIsLoading(false);
     }

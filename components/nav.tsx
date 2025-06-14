@@ -9,29 +9,38 @@ export function Nav() {
   const [cartCount, setCartCount] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  useEffect(() => {
-    // Load cart count from localStorage
-    const savedCart = localStorage.getItem('cart')
-    if (savedCart) {
-      const cartItems = JSON.parse(savedCart)
-      const totalItems = cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0)
-      setCartCount(totalItems)
-    }
-
-    // Listen for storage changes
-    const handleStorageChange = () => {
-      const savedCart = localStorage.getItem('cart')
-      if (savedCart) {
-        const cartItems = JSON.parse(savedCart)
+  const updateCartCount = async () => {
+    try {
+      const response = await fetch('/api/cart')
+      if (response.ok) {
+        const cartItems = await response.json()
         const totalItems = cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0)
         setCartCount(totalItems)
-      } else {
-        setCartCount(0)
       }
+    } catch (error) {
+      console.error('Failed to fetch cart count:', error)
+    }
+  }
+
+  useEffect(() => {
+    // Load initial cart count
+    updateCartCount()
+
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      updateCartCount()
     }
 
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
+    // Add event listener for cart updates
+    window.addEventListener('cartUpdated', handleCartUpdate)
+    
+    // Poll for cart updates every 5 seconds as fallback
+    const interval = setInterval(updateCartCount, 5000)
+
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate)
+      clearInterval(interval)
+    }
   }, [])
 
   return (
