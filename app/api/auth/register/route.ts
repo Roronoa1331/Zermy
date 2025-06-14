@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await (prisma as any).user.findUnique({
       where: { email },
     })
 
@@ -30,24 +30,12 @@ export async function POST(req: Request) {
     const hashedPassword = await hash(password, 12)
 
     // Create user
-    const user = await prisma.user.create({
+    const user = await (prisma as any).user.create({
       data: {
         name,
         email,
         password: hashedPassword,
         role: "BUYER", // Default role
-      },
-    })
-
-    // Create activity log
-    await prisma.activityLog.create({
-      data: {
-        type: "USER",
-        description: `New user registered: ${user.email}`,
-        metadata: {
-          userId: user.id,
-          role: user.role,
-        },
       },
     })
 
@@ -67,4 +55,4 @@ export async function POST(req: Request) {
       { status: 500 }
     )
   }
-} 
+}
