@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verify } from 'jsonwebtoken';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,7 +9,8 @@ import { format } from 'date-fns';
 import { az } from 'date-fns/locale';
 
 export default async function ProfilePage() {
-  const token = cookies().get('token')?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
 
   if (!token) {
     redirect('/signin');
@@ -18,7 +19,7 @@ export default async function ProfilePage() {
   try {
     const decoded = verify(token, process.env.JWT_SECRET!) as { id: string };
     
-    const user = await prisma.user.findUnique({
+    const user = await (prisma as any).user.findUnique({
       where: { id: decoded.id },
       select: {
         id: true,
@@ -81,4 +82,4 @@ export default async function ProfilePage() {
     console.error('Error fetching user profile:', error);
     redirect('/signin');
   }
-} 
+}

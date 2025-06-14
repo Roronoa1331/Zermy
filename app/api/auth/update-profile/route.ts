@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { verify } from 'jsonwebtoken';
 import { compare, hash } from 'bcryptjs';
@@ -8,7 +8,8 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const token = cookies().get('token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
 
     if (!token) {
       return NextResponse.json(
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     const { name, email, currentPassword, newPassword } = await request.json();
 
     // Get the user
-    const user = await prisma.user.findUnique({
+    const user = await (prisma as any).user.findUnique({
       where: { id: decoded.id }
     });
 
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
 
     // Check if email is already taken by another user
     if (email !== user.email) {
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await (prisma as any).user.findUnique({
         where: { email }
       });
 
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       const hashedPassword = await hash(newPassword, 12);
 
       // Update user with new password
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await (prisma as any).user.update({
         where: { id: decoded.id },
         data: {
           name,
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ user: updatedUser });
     } else {
       // Update user without changing password
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await (prisma as any).user.update({
         where: { id: decoded.id },
         data: {
           name,
@@ -106,4 +107,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

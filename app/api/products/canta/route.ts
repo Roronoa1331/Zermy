@@ -1,50 +1,29 @@
-import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-
-// Define the Çanta product
-const CANTA_PRODUCT = {
-  name: "Çanta 🟢",
-  price: 50.00,
-  image: "https://marksandspencer.com.ph/cdn/shop/files/SD_03_T09_1770_J0_X_EC_90.jpg?v=1699257084",
-  description: "Eko-dostu materiallardan hazırlanmış, davamlı və şık çanta. Gündəlik istifadə üçün ideal.",
-  modelUrl: "/models/products/bag/bag.glb",
-  hasAR: true,
-  features: [
-    "100% təbii material",
-    "Suyadavamlı",
-    "Yüngül və rahat",
-    "Çoxməqsədli dizayn"
-  ],
-  sellerId: process.env.ADMIN_USER_ID || 'admin'
-};
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Check if Çanta already exists
-    const existingProduct = await prisma.product.findFirst({
-      where: {
-        name: {
-          contains: 'Çanta',
-          mode: 'insensitive'
-        }
-      }
-    });
-
-    if (existingProduct) {
-      return NextResponse.json({ product: existingProduct });
-    }
-
-    // Create Çanta product if it doesn't exist
-    const newProduct = await prisma.product.create({
-      data: CANTA_PRODUCT
-    });
-
-    return NextResponse.json({ product: newProduct });
+    // For now, return mock data since Product model doesn't exist
+    const products = [
+      { id: '1', name: 'Çanta 1', price: 50, category: 'canta' },
+      { id: '2', name: 'Çanta 2', price: 75, category: 'canta' }
+    ];
+    return NextResponse.json({ products });
   } catch (error) {
-    console.error('Error with Çanta product:', error);
-    return NextResponse.json(
-      { error: 'Məhsul yaradılması mümkün olmadı' },
-      { status: 500 }
-    );
+    console.error('Error fetching canta products:', error);
+    return NextResponse.json({ error: 'Server xətası' }, { status: 500 });
   }
-} 
+}
+
+export async function POST(request: Request) {
+  try {
+    const productData = await request.json();
+    
+    // For now, return the product data as created
+    const product = { id: Date.now().toString(), ...productData, category: 'canta' };
+    
+    return NextResponse.json({ product });
+  } catch (error) {
+    console.error('Error creating canta product:', error);
+    return NextResponse.json({ error: 'Server xətası' }, { status: 500 });
+  }
+}

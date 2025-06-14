@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -26,298 +26,177 @@ interface CartItem {
   image: string;
 }
 
-export const dynamic = 'force-dynamic';
-
 export default function CheckoutPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-    cardNumber: "",
-    expiry: "",
-    cvc: "",
-  });
-
+  
   useEffect(() => {
-    // Redirect if not authenticated
+    // Redirect if not logged in
     if (status === "unauthenticated") {
-      router.push("/login?callbackUrl=/checkout");
+      router.push("/auth/signin?callbackUrl=/checkout");
       return;
     }
-
+    
+    // Fetch cart items
     const fetchCart = async () => {
       try {
         const response = await fetch("/api/cart");
-        const data = await response.json();
-
         if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch cart");
+          throw new Error("Failed to fetch cart");
         }
-
-        if (!data.items || !Array.isArray(data.items)) {
-          throw new Error("Invalid cart data");
-        }
-
-        setCartItems(data.items);
-
-        // Pre-fill form with user data if available
-        if (session?.user) {
-          setFormData((prev) => ({
-            ...prev,
-            name: session.user.name || "",
-            email: session.user.email || "",
-          }));
-        }
+        const data = await response.json();
+        setCartItems(data.items || []);
       } catch (err) {
         console.error("Error fetching cart:", err);
-        setError(err instanceof Error ? err.message : "Failed to load cart");
+        setError("Could not load your cart items. Please try again.");
       } finally {
         setLoading(false);
       }
     };
-
+    
     if (status === "authenticated") {
       fetchCart();
     }
-  }, [status, session, router]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      if (!cartItems.length) {
-        throw new Error("Your cart is empty");
-      }
-
-      // Create payment intent
-      const response = await fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: cartItems,
-          customer: {
-            name: formData.name,
-            email: formData.email,
-            address: {
-              line1: formData.address,
-              city: formData.city,
-              state: formData.state,
-              postal_code: formData.zip,
-            },
-          },
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to create payment intent");
-      }
-
-      // Redirect to Stripe Checkout
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error("Stripe failed to initialize");
-
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-    } catch (err) {
-      console.error("Error during checkout:", err);
-      setError(err instanceof Error ? err.message : "Checkout failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (status === "loading" || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+  }, [status, router]);
+  
+  // Handle empty cart or loading state
+  if (loading) {
+    return <div className="container py-16 text-center">Loading checkout information...</div>;
   }
-
+  
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-500">Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">{error}</p>
-            <Button onClick={() => router.push("/cart")}>Return to Cart</Button>
-          </CardContent>
-        </Card>
+      <div className="container py-16 text-center">
+        <p className="text-red-500 mb-4">{error}</p>
+        <Button onClick={() => router.push("/products")}>Continue Shopping</Button>
       </div>
     );
   }
-
+  
   if (!cartItems.length) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <Card>
-          <CardHeader>
-            <CardTitle>Empty Cart</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">Your cart is empty</p>
-            <Button onClick={() => router.push("/products")}>
-              Continue Shopping
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="container py-16 text-center">
+        <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
+        <Button onClick={() => router.push("/products")}>Continue Shopping</Button>
       </div>
     );
   }
-
-  const total = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-
+  
+  // Calculate order totals
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping = 10; // Example shipping cost
+  const total = subtotal + shipping;
+  
+  // Handle checkout
+  const handleCheckout = async () => {
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Could not load Stripe");
+      
+      // Create checkout session
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cartItems }),
+      });
+      
+      const session = await response.json();
+      
+      // Redirect to Stripe checkout
+      const result = await stripe.redirectToCheckout({
+        sessionId: session.id,
+      });
+      
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setError("Payment could not be processed. Please try again.");
+    }
+  };
+  
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* Order Summary */}
+    <div className="container py-16">
+      <h1 className="text-3xl font-bold mb-6">Checkout</h1>
+      
+      <div className="grid md:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Order Summary</CardTitle>
-            <CardDescription>Review your items</CardDescription>
+            <CardDescription>Review your items before checkout</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Quantity: {item.quantity}
-                      </p>
-                    </div>
+                <div key={item.id} className="flex justify-between items-center border-b pb-2">
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
                   </div>
-                  <p className="font-medium">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </p>
+                  <p>${(item.price * item.quantity).toFixed(2)}</p>
                 </div>
               ))}
-              <div className="border-t pt-4">
-                <div className="flex justify-between font-bold">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
+              
+              <div className="flex justify-between pt-2">
+                <p>Subtotal</p>
+                <p>${subtotal.toFixed(2)}</p>
+              </div>
+              <div className="flex justify-between">
+                <p>Shipping</p>
+                <p>${shipping.toFixed(2)}</p>
+              </div>
+              <div className="flex justify-between font-bold">
+                <p>Total</p>
+                <p>${total.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Checkout Form */}
+        
         <Card>
           <CardHeader>
             <CardTitle>Payment Information</CardTitle>
-            <CardDescription>Enter your payment details</CardDescription>
+            <CardDescription>Enter your shipping and payment details</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                />
+            <form className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input id="firstName" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                />
+                <Input id="address" />
               </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <Input id="city" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <Label htmlFor="zip">ZIP Code</Label>
+                  <Input id="zip" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="zip">ZIP Code</Label>
-                <Input
-                  id="zip"
-                  name="zip"
-                  value={formData.zip}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
+              
+              <Button 
+                className="w-full" 
+                onClick={handleCheckout} 
+                type="button"
               >
-                {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
+                Proceed to Payment
               </Button>
             </form>
           </CardContent>

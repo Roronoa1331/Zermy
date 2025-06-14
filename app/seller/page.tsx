@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, ShoppingCart, TrendingUp, Users } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Package, ShoppingCart, TrendingUp, Users, Plus } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface DashboardStats {
   totalProducts: number
@@ -11,58 +14,54 @@ interface DashboardStats {
   totalCustomers: number
 }
 
-interface RecentOrder {
-  id: string
-  productName: string
-  customerName: string
-  amount: number
-  status: string
-  date: string
-}
-
 export default function SellerDashboard() {
+  const router = useRouter()
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
     totalOrders: 0,
     totalRevenue: 0,
     totalCustomers: 0
   })
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const checkAuth = async () => {
       try {
-        // Fetch dashboard stats
-        const statsResponse = await fetch("/api/seller/stats")
-        const statsData = await statsResponse.json()
-
-        if (!statsResponse.ok) {
-          throw new Error(statsData.error || "Failed to fetch dashboard stats")
+        const response = await fetch('/api/auth/me')
+        const data = await response.json()
+        
+        if (response.ok && data.user && data.user.role === 'SELLER') {
+          setIsAuthorized(true)
+          // Load mock stats
+          setStats({
+            totalProducts: 12,
+            totalOrders: 45,
+            totalRevenue: 2340.50,
+            totalCustomers: 28
+          })
+        } else {
+          router.push('/auth/seller/login')
         }
-
-        setStats(statsData)
-
-        // Fetch recent orders
-        const ordersResponse = await fetch("/api/seller/orders/recent")
-        const ordersData = await ordersResponse.json()
-
-        if (!ordersResponse.ok) {
-          throw new Error(ordersData.error || "Failed to fetch recent orders")
-        }
-
-        setRecentOrders(ordersData.orders)
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err)
-        setError(err instanceof Error ? err.message : "Məlumatları yükləmək mümkün olmadı")
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.push('/auth/seller/login')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchDashboardData()
-  }, [])
+    checkAuth()
+  }, [router])
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      router.push('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
 
   if (loading) {
     return (
@@ -72,21 +71,30 @@ export default function SellerDashboard() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-red-500">{error}</p>
-      </div>
-    )
+  if (!isAuthorized) {
+    return null
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Mağaza Paneli</h2>
-        <p className="text-muted-foreground">
-          Mağazanızın statistikası və son sifarişlər
-        </p>
+    <div className="container py-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Satıcı Paneli</h2>
+          <p className="text-muted-foreground">
+            Mağazanızın statistikası və idarəetməsi
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href="/seller/products/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Yeni Məhsul
+            </Link>
+          </Button>
+          <Button variant="outline" onClick={handleLogout}>
+            Çıxış
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -154,37 +162,63 @@ export default function SellerDashboard() {
         </Card>
       </div>
 
-      {/* Recent Orders */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Son Sifarişlər</CardTitle>
-          <CardDescription>
-            Son 5 sifariş
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-8">
-            {recentOrders.map((order) => (
-              <div key={order.id} className="flex items-center">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {order.productName}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {order.customerName}
-                  </p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="text-sm font-medium">{order.amount.toFixed(2)} ₼</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(order.date).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Actions */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Məhsulları İdarə Et</CardTitle>
+            <CardDescription>
+              Məhsullarınızı əlavə edin, redaktə edin və silin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Button asChild size="sm">
+                <Link href="/seller/products">
+                  Məhsulları Gör
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/seller/products/new">
+                  Yeni Əlavə Et
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sifarişlər</CardTitle>
+            <CardDescription>
+              Gələn sifarişləri izləyin və idarə edin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild size="sm">
+              <Link href="/seller/orders">
+                Sifarişləri Gör
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Analitika</CardTitle>
+            <CardDescription>
+              Satış statistikalarınızı və performansınızı görün
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild size="sm">
+              <Link href="/seller/analytics">
+                Analitikaya Bax
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
-} 
+}

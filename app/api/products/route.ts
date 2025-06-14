@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 interface ProductData {
   name: string;
@@ -31,27 +31,26 @@ const CANTA_PRODUCT: ProductData = {
 export async function GET() {
   try {
     // Fetch all products from the database
-    const products = await prisma.product.findMany({
+    const products = await (prisma as any).product.findMany({
       orderBy: {
         createdAt: 'desc'
       }
     });
 
     // Check if Çanta exists in the database
-    const cantaExists = products.some((p) => p.name.toLowerCase().includes('çanta'));
+    const cantaExists = products.some((p: { name: string }) => p.name.toLowerCase().includes('çanta'));
     
     // If Çanta doesn't exist, create it
     if (!cantaExists) {
       try {
-        await prisma.product.create({
+        await (prisma as any).product.create({
           data: {
             ...CANTA_PRODUCT,
-            sellerId: process.env.ADMIN_USER_ID || 'admin' // Use an admin user ID
+            sellerId: process.env.ADMIN_USER_ID || 'admin'
           }
         });
         
-        // Fetch updated products list
-        const updatedProducts = await prisma.product.findMany({
+        const updatedProducts = await (prisma as any).product.findMany({
           orderBy: {
             createdAt: 'desc'
           }
@@ -64,7 +63,6 @@ export async function GET() {
       }
     }
 
-    // Return all products
     return NextResponse.json({ products });
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -73,4 +71,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}

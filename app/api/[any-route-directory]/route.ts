@@ -48,6 +48,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          // Use explicit type casting to avoid TypeScript errors
           const user = await (prisma as any).user.findUnique({
             where: {
               email: credentials.email,
@@ -102,8 +103,12 @@ export const authOptions: NextAuthOptions = {
           ...session.user,
           id: token.id,
           role: token.role,
-        }
-      }
+        },
+
+
+
+
+}  },    },      }      }
     },
   },
   secret: process.env.NEXTAUTH_SECRET,

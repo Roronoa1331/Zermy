@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Check if email is already registered
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await (prisma as any).user.findUnique({
       where: { email },
     });
 
@@ -31,12 +31,12 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-    const user = await prisma.user.create({
+    const user = await (prisma as any).user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: 'seller'
+        role: 'SELLER'
       },
     });
 
@@ -57,4 +57,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

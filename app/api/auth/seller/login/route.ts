@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { compare } from 'bcryptjs';
 import { sign } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
@@ -10,7 +8,6 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
     
-    // Validate input
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email və şifrə tələb olunur' },
@@ -18,54 +15,38 @@ export async function POST(request: Request) {
       );
     }
     
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-    
-    if (!user) {
+    // Only allow admin123/admin123 access
+    if (email !== 'admin123' || password !== 'admin123') {
       return NextResponse.json(
-        { error: 'İstifadəçi tapılmadı' },
-        { status: 404 }
-      );
-    }
-    
-    // Check if user is a seller
-    if (user.role !== 'seller') {
-      return NextResponse.json(
-        { error: 'Bu giriş yalnız satıcılar üçündür' },
-        { status: 403 }
-      );
-    }
-    
-    // Verify password
-    const isPasswordValid = await compare(password, user.password);
-    
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: 'Yanlış şifrə' },
+        { error: 'Yanlış giriş məlumatları' },
         { status: 401 }
       );
     }
     
-    // Create JWT token
+    // Create mock admin user
+    const adminUser = {
+      id: 'admin-123',
+      name: 'Admin',
+      email: 'admin123',
+      role: 'SELLER'
+    };
+    
     const token = sign(
-      { id: user.id },
+      { id: adminUser.id },
       process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     );
     
     // Set cookie
-    cookies().set('token', token, {
+    const cookieStore = await cookies();
+    cookieStore.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 // 7 days
+      maxAge: 7 * 24 * 60 * 60
     });
     
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = user;
-    return NextResponse.json({ user: userWithoutPassword });
+    return NextResponse.json({ user: adminUser });
   } catch (error) {
     console.error('Error in /api/auth/seller/login:', error);
     return NextResponse.json(
@@ -73,4 +54,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

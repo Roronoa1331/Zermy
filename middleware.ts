@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { NextRequest, NextResponse } from 'next/server'
+import { verify } from 'jsonwebtoken'
 
 // Paths that don't require authentication
 const publicPaths = [
@@ -12,79 +11,43 @@ const publicPaths = [
   '/api/cart',
 ]
 
-// Role-based path access
-const roleBasedPaths = {
-  ADMIN: ['/admin', '/api/admin'],
-  SELLER: ['/seller', '/api/seller'],
-  BUYER: ['/cart', '/orders', '/api/orders'],
-}
-
 export async function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname
+  const { pathname } = request.nextUrl
 
-  // Check if path is public
-  if (publicPaths.some(p => path.startsWith(p))) {
+  // Check if the path is public
+  if (publicPaths.some(path => pathname.startsWith(path))) {
     return NextResponse.next()
   }
 
-  // Get session token
-  const token = await getToken({ req: request })
+  // Get token from cookies
+  const token = request.cookies.get('token')
 
-  if (!token) {
+  if (!token || !token.value) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
   try {
+    // Verify the token
+    const decoded = verify(token.value, process.env.JWT_SECRET || 'fallback-secret') as { id: string, role: string }
+    
     // Check role-based access
-    const hasAccess = Object.entries(roleBasedPaths).some(([role, paths]) => {
-      if (token.role === role) {
-        return paths.some(p => path.startsWith(p))
-      }
-      return false
-    })
-
-    if (!hasAccess) {
-      // If user doesn't have access, redirect to appropriate dashboard
-      switch (token.role) {
-        case 'ADMIN':
-          return NextResponse.redirect(new URL('/admin', request.url))
-        case 'SELLER':
-          return NextResponse.redirect(new URL('/seller', request.url))
-        case 'BUYER':
-          return NextResponse.redirect(new URL('/', request.url))
-      }
+    if (pathname.startsWith('/admin') && decoded.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/', request.url))
     }
-
-    // Add user info to headers for API routes
-    if (path.startsWith('/api/')) {
-      const requestHeaders = new Headers(request.headers)
-      requestHeaders.set('user-id', token.id)
-      requestHeaders.set('user-role', token.role)
-
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      })
+    
+    if (pathname.startsWith('/seller') && decoded.role !== 'SELLER') {
+      return NextResponse.redirect(new URL('/', request.url))
     }
 
     return NextResponse.next()
   } catch (error) {
-    // If session is invalid, redirect to login
+    console.error('Token verification failed:', error)
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 }
 
-// Configure paths that should be checked by middleware
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
-} 
+}
