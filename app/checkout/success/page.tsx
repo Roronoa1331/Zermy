@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function CheckoutSuccessPage() {
+function SuccessPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -103,4 +103,12 @@ export default function CheckoutSuccessPage() {
       </Card>
     </div>
   )
-} 
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SuccessPageContent />
+    </Suspense>
+  )
+}
